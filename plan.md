@@ -93,7 +93,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. Rent roll, income, arrears and maintenance reports with CSV (queued).
 4. Full workspace export (CSV + documents zip, queued, Owner, audited).
 
-**Phase 9 — Settings and retention**
+**Phase 9 — Settings and retention** ✅ done
 1. Workspace name, logo, contact details used in emails and PDFs; priority targets; contractor-contact toggle.
 2. Archive ended tenancies; anonymise tenant data N years after end, keeping financial totals; tests.
 3. Delete workspace (Owner, typed confirmation); extra workspaces; `SIGNUP_ENABLED`.

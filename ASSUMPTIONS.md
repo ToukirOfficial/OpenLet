@@ -111,3 +111,8 @@ The seed also prints a contractor job link for one open repair.
 - Every team member can view reports on screen. Downloading a CSV needs Owner or Manager; the full export needs Owner. Both are audited.
 - The full export leaves out passwords, tokens, internal file names and user ids.
 - Chart bars use a slightly brighter step of the brand green (#13805f) so they read as colour, checked with the palette validator.
+
+## Retention (Phase 9)
+- A tenant is anonymised only when **all** their tenancies ended more than the retention period ago. Name becomes "Former tenant"; email, phone, date of birth, emergency contact, notes, Right to Rent checks, their documents and their repair photos are removed, and their portal login is unlinked. Rent amounts and dates stay.
+- Guarantor details, access notes and message author names on a tenancy are cleared once every tenant on it has been anonymised.
+- The run is daily at 03:30 London time.

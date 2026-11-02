@@ -11,6 +11,7 @@ import { ExportsModule } from './exports/exports.module.js';
 import { ComplianceModule } from './compliance/compliance.module.js';
 import { RemindersModule } from './reminders/reminders.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { RetentionModule } from './retention/retention.module.js';
 import { JobProcessors } from './jobs/processors.js';
 import { QUEUES, QueueService } from './jobs/queue.service.js';
 import { RedisService } from './redis.service.js';
@@ -20,9 +21,10 @@ const SCHEDULES: { id: string; pattern: string; demoOnly?: boolean }[] = [
   { id: 'rent-charges', pattern: '0 2 * * *' },
   { id: 'purge-exports', pattern: '15 * * * *' },
   { id: 'reminders', pattern: '0 8 * * *' },
+  { id: 'retention', pattern: '30 3 * * *' },
 ];
 
-@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, ExportsModule, ComplianceModule, RemindersModule, ReportsModule, JobsModule] })
+@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, ExportsModule, ComplianceModule, RemindersModule, ReportsModule, RetentionModule, JobsModule] })
 class WorkerModule {}
 
 const logger = new Logger('Worker');
