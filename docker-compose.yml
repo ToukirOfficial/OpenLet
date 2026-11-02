@@ -1,0 +1,77 @@
+# Self-host OpenLet: docker compose up -d
+# Settings come from .env (copy .env.example). The values below override the ones that must differ inside Docker.
+name: openlet
+
+x-api-env: &api-env
+  env_file: .env
+  environment:
+    NODE_ENV: production
+    API_HOST: 0.0.0.0
+    API_PORT: '8130'
+    DATABASE_URL: postgresql://openlet:${POSTGRES_PASSWORD:-openlet}@postgres:5432/openlet
+    REDIS_URL: redis://redis:6379/0
+    STORAGE_DIR: /data/storage
+    TRUST_PROXY: loopback, uniquelocal
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openlet
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openlet}
+      POSTGRES_DB: openlet
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U openlet']
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 20
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    <<: *api-env
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    command: ['node', 'dist/worker.js']
+    <<: *api-env
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_INTERNAL_URL: http://api:8130
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8030}:8030'
+    depends_on:
+      - api
+
+volumes:
+  postgres:
+  redis:
+  storage:
