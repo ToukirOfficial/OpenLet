@@ -61,3 +61,10 @@ Decisions the PRD and FEATURES.md don't make. Change any of these by telling me.
 | Tenant | tenant@demo.openlet.test |
 
 The seed also prints a contractor job link for one open repair.
+
+## Portfolio rules (Phase 2)
+- A property's status: **vacant** if any unit has no current tenancy, **ending soon** if a current tenancy has notice or ends within 60 days, otherwise **occupied**. The list also shows "2 of 3 let".
+- A fixed-term tenancy ends on its end date (PRD: no charges after the end date). To let it roll on, clear the end date.
+- The first photo uploaded to a property becomes its cover picture.
+- Contractors and properties with history are archived, not deleted. Tenants with tenancies can't be deleted; retention anonymises them later.
+- Workspace logos are public images (they appear in emails), served by workspace id.

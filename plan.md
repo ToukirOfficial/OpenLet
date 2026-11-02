@@ -53,7 +53,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. First-run setup, login + email code, rotating refresh cookies, password reset, `/me`, audit log of logins; tests.
 4. Workspaces, memberships, roles guard, team invites, workspace switcher, tenant role and contractor-link token service (hash, scope, expiry, revoke); isolation tests.
 
-**Phase 2 — Properties and tenants**
+**Phase 2 — Properties and tenants** ✅ done
 1. Properties and units: create/edit, UK address and postcode check, calculated status, search and filter.
 2. Tenants with Right to Rent record; contractor directory.
 3. Private uploads: content-type sniffing, size limit, metadata/GPS strip, HEIC→JPEG on queue, permission-checked download, audit on download.
