@@ -4,7 +4,7 @@ import { AuthGuard } from './common/auth.guard.js';
 import { CommonModule } from './common/common.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { WorkspacesModule } from './workspaces/workspaces.module.js';
-import { HealthController } from './health/health.controller.js';
+import { HealthController, PlainHealthController } from './health/health.controller.js';
 import { PropertiesModule } from './properties/properties.module.js';
 import { TenantsModule } from './tenants/tenants.module.js';
 import { ContractorsModule } from './contractors/contractors.module.js';
@@ -25,7 +25,7 @@ import { DemoModule } from './demo/demo.module.js';
 
 @Module({
   imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule, ComplianceModule, RemindersModule, MessagesModule, PortalModule, DashboardModule, ReportsModule, RetentionModule, DemoModule],
-  controllers: [HealthController],
+  controllers: [HealthController, PlainHealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })
 export class AppModule {}
