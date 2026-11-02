@@ -77,7 +77,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. Contractor job page: details, access notes, tenant contact if allowed, status, visit date, photos, notes, cost; link scope/expiry tests.
 4. Tenant emails on each status change; repair costs per property.
 
-**Phase 6 — Compliance and reminders**
+**Phase 6 — Compliance and reminders** ✅ done
 1. Document types with expiry, share with tenant; compliance board (valid/expiring/expired/missing, required-doc settings); status tests.
 2. Reminder engine: rent due, overdue steps, certificate 60/30/7, deposit protection, Right to Rent; once per item and step, stops when resolved; tests.
 3. Settings for reminder schedules, per-tenancy switch-off, "not legal advice" note across the app.

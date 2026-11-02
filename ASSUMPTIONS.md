@@ -89,3 +89,10 @@ The seed also prints a contractor job link for one open repair.
 - Contractors see the job, access notes, status changes and their own notes. They never see landlord–tenant comments, internal notes or other repairs, and see the tenant's name and phone only if the workspace allows it.
 - During the grace period after closing, the contractor can still open the job but can't change it.
 - Tenants are emailed when the status changes, a visit is booked, or staff share a comment with them.
+
+## Compliance and reminders (Phase 6)
+- The certificate that counts is the one that runs longest; uploading a renewal replaces the old one on the board and stops its reminders.
+- A certificate uploaded without an expiry date counts as valid.
+- Rent reminders: one "due soon" email per charge; overdue emails at each step for the oldest unpaid charge. If the daily run is missed, only the latest step is sent (earlier ones are skipped, not sent in a burst).
+- Certificate, deposit and Right to Rent reminders are grouped into one email per Owner/Manager per day.
+- Certificate reminders also go once on the day after expiry.

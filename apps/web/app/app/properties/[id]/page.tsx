@@ -25,7 +25,7 @@ import { useForm } from '@/lib/form';
 import { useRole } from '@/lib/session';
 import { PROPERTY_TONE, TENANCY_TONE } from '@/lib/tones';
 import { useApi } from '@/lib/use-api';
-import { PropertyRepairs } from '@/components/property-extras';
+import { PropertyCompliance, PropertyRepairs } from '@/components/property-extras';
 
 function AddUnit({ propertyId, onDone }: { propertyId: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
@@ -192,7 +192,10 @@ function PropertyPage() {
           ) : tab === 'repairs' ? (
             <PropertyRepairs propertyId={p.id} />
           ) : tab === 'documents' ? (
-            <DocumentsPanel owner={{ propertyId: p.id }} description="Certificates, inventories and photos for this property." />
+            <div className="space-y-6">
+              <PropertyCompliance propertyId={p.id} />
+              <DocumentsPanel owner={{ propertyId: p.id }} types={['GAS_SAFETY', 'EICR', 'EPC', 'SMOKE_CO_ALARM', 'LICENCE', 'INSURANCE', 'INVENTORY', 'PHOTO', 'OTHER']} description="Certificates, inventories and photos for this property. Add an expiry date to certificates to get reminders." />
+            </div>
           ) : tab === 'notes' ? (
             <NotesPanel owner={{ propertyId: p.id }} />
           ) : (
