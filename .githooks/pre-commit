@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Stops a commit that would publish a secret, server address or other server detail (this repo is public).
+exec "$(git rev-parse --show-toplevel)/scripts/scan-secrets.sh"
