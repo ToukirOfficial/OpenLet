@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/dist
+**/generated
+.turbo
+.git
+.env
+.env.*
+!.env.example
+storage
+storage-test
+**/storage-test
