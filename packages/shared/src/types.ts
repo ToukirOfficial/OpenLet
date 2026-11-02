@@ -203,3 +203,72 @@ export interface ActivityItem {
   tenantId: string | null;
   repairId: string | null;
 }
+
+// ---------- Tenancies ----------
+export interface TenancyListItem {
+  id: string;
+  status: 'UPCOMING' | 'ACTIVE' | 'ENDING' | 'ENDED';
+  propertyId: string;
+  address: string;
+  unitName: string;
+  tenantNames: string;
+  startDate: string;
+  endDate: string | null;
+  rentPence: number;
+  frequency: 'MONTHLY' | 'WEEKLY' | 'FOUR_WEEKLY';
+  balancePence: number;
+}
+
+export interface RentChangeItem {
+  id: string;
+  amountPence: number;
+  effectiveFrom: string;
+  createdAt: string;
+}
+
+export interface DepositInfo {
+  amountPence: number;
+  receivedOn: string | null;
+  scheme: 'DPS' | 'TDS' | 'MYDEPOSITS' | 'OTHER' | null;
+  schemeReference: string | null;
+  protectedOn: string | null;
+  prescribedInfoOn: string | null;
+  returnedOn: string | null;
+  returnedPence: number | null;
+  deductions: { id: string; reason: string; amountPence: number }[];
+  /** Received but not protected after the workspace's limit. */
+  protectionOverdue: boolean;
+  protectBy: string | null;
+}
+
+export interface GuarantorItem {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+}
+
+export interface TenancyDetail extends TenancyListItem {
+  unitId: string;
+  dueDay: number;
+  remindersEnabled: boolean;
+  noticeBy: 'TENANT' | 'LANDLORD' | null;
+  noticeGivenOn: string | null;
+  noticeEndDate: string | null;
+  endedOn: string | null;
+  tenants: { id: string; name: string; email: string | null; phone: string | null; portal: 'NONE' | 'INVITED' | 'ACTIVE' }[];
+  rentChanges: RentChangeItem[];
+  deposit: DepositInfo | null;
+  guarantors: GuarantorItem[];
+  nextDueDate: string | null;
+  arrearsPence: number;
+  daysOverdue: number;
+}
+
+export interface PropertyOption {
+  id: string;
+  address: string;
+  units: { id: string; name: string; tenancy: { id: string; status: string; tenantNames: string; endDate: string | null } | null }[];
+}

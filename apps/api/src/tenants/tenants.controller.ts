@@ -38,6 +38,11 @@ export class TenantsController {
     return this.tenants.remove(ctx, p.id);
   }
 
+  @Post(':id/invite')
+  invite(@Staff() ctx: StaffContext, @Param({ schema: idParam }) p: z.infer<typeof idParam>) {
+    return this.tenants.invite(ctx, p.id);
+  }
+
   @Post(':id/right-to-rent')
   addCheck(@Staff() ctx: StaffContext, @Param({ schema: idParam }) p: z.infer<typeof idParam>, @Body({ schema: rightToRentSchema }) body: z.infer<typeof rightToRentSchema>) {
     return this.tenants.addRightToRent(ctx, p.id, body);

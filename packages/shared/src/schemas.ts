@@ -193,8 +193,9 @@ export const tenancySchema = z
   })
   .refine((t) => !t.endDate || t.endDate > t.startDate, { path: ['endDate'], message: 'End date must be after the start' });
 export const tenancyUpdateSchema = z.object({
-  endDate: optionalDate,
-  remindersEnabled: z.boolean(),
+  /** Leave out to keep the end date; null makes the tenancy rolling. */
+  endDate: isoDate.nullable().optional(),
+  remindersEnabled: z.boolean().optional(),
 });
 export const tenancyListQuery = listQuery.extend({ status: z.enum(TENANCY_STATUSES).optional() });
 export const rentChangeSchema = z.object({ amountPence: positivePence, effectiveFrom: isoDate });

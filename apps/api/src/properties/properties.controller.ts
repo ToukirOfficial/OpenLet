@@ -22,6 +22,11 @@ export class PropertiesController {
     return this.properties.create(ctx, body);
   }
 
+  @Get('options')
+  options(@Staff() ctx: StaffContext) {
+    return this.properties.options(ctx);
+  }
+
   @Get(':id')
   get(@Staff() ctx: StaffContext, @Param({ schema: idParam }) p: z.infer<typeof idParam>) {
     return this.properties.get(ctx, p.id);

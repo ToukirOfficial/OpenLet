@@ -102,6 +102,16 @@ export class PropertiesService {
     return { items: all.slice(start, start + PAGE).map(({ units: _u, ...p }) => p), hasMore: all.length > start + PAGE, total: all.length };
   }
 
+  /** Every unit, grouped by property, for pickers (the new-tenancy wizard, repairs). */
+  async options(ctx: StaffContext) {
+    const rows = await this.prisma.property.findMany({ where: { workspaceId: ctx.workspaceId, archivedAt: null }, include: unitInclude, orderBy: [{ town: 'asc' }, { addressLine1: 'asc' }] });
+    const today = londonDate();
+    return rows.map((p) => {
+      const s = this.summarise(p, today);
+      return { id: p.id, address: s.address, units: s.units.map((u) => ({ id: u.id, name: u.name, tenancy: u.tenancy ? { id: u.tenancy.id, status: u.tenancy.status, tenantNames: u.tenancy.tenantNames, endDate: u.tenancy.endDate } : null })) };
+    });
+  }
+
   private async load(ctx: StaffContext, id: string) {
     const p = await this.prisma.property.findFirst({ where: { id, workspaceId: ctx.workspaceId }, include: unitInclude });
     if (!p) throw notFound('Property');

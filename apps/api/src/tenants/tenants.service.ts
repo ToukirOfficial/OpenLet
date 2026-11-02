@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import type { z } from 'zod';
 import { londonDate, tenancyStatus, type TenantDetail, type TenantListItem, type rightToRentSchema, type tenantListQuery, type tenantSchema } from '@openlet/shared';
 import { PrismaService } from '../prisma.service.js';
@@ -9,6 +9,12 @@ import { notFound } from '../common/not-found.js';
 import { formatAddress } from '../properties/properties.service.js';
 import { StorageService } from '../files/storage.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { config } from '../config.js';
+import { randomToken, sha256 } from '../common/crypto.js';
+import { RateLimitService } from '../common/rate-limit.service.js';
+import { MailService } from '../mail/mail.service.js';
+import { email } from '../mail/templates.js';
+import { INVITE_TTL_MS } from '../workspaces/workspaces.service.js';
 
 const PAGE = 50;
 
@@ -31,7 +37,43 @@ export class TenantsService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly storage: StorageService,
+    private readonly mail: MailService,
+    private readonly limits: RateLimitService,
   ) {}
+
+  /** Emails the tenant a link to set up their portal login. Sending again replaces the old link. */
+  async invite(ctx: StaffContext, tenantId: string) {
+    const t = await this.load(ctx, tenantId);
+    if (t.anonymisedAt) throw new ConflictException({ message: 'This tenant’s details were anonymised.' });
+    if (t.userId) throw new ConflictException({ message: 'This tenant already uses the portal.' });
+    if (!t.email) throw new BadRequestException({ code: 'NO_EMAIL', message: 'Add the tenant’s email address first.' });
+    await this.limits.hit(`invite:send:${ctx.workspaceId}`, 60, 3600);
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: ctx.workspaceId }, select: { name: true } });
+    const token = randomToken(32);
+    await this.prisma.$transaction([
+      this.prisma.invite.updateMany({ where: { tenantId, acceptedAt: null, revokedAt: null }, data: { revokedAt: new Date() } }),
+      this.prisma.invite.create({
+        data: { workspaceId: ctx.workspaceId, kind: 'TENANT', email: t.email, tenantId, tokenHash: sha256(token), invitedById: ctx.userId, expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+      }),
+    ]);
+    await this.mail.send({
+      to: t.email,
+      workspaceId: ctx.workspaceId,
+      ...email({
+        subject: `Your tenant portal with ${ws.name}`,
+        from: ws.name,
+        heading: 'Your tenant portal is ready',
+        paragraphs: [
+          `Hello ${t.firstName},`,
+          `${ws.name} uses OpenLet to look after your tenancy. In your portal you can see your rent and balance, report repairs with photos, read your documents and send messages.`,
+          'The link below works for 7 days.',
+        ],
+        button: { label: 'Set up my portal', url: `${config().APP_URL}/invite/${token}` },
+      }),
+    });
+    await this.activity.record({ workspaceId: ctx.workspaceId, actor: actorOf(ctx), action: 'tenant.invited', summary: 'Invited the tenant to their portal', tenantId });
+    return this.get(ctx, tenantId);
+  }
 
   private item(t: Loaded, today = londonDate()): TenantListItem & { tenancies: TenantDetail['tenancies'] } {
     const tenancies = t.tenancies
