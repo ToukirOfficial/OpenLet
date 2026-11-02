@@ -397,3 +397,26 @@ export interface ContractorJob {
   updates: { body: string | null; toStatus: RepairListItem['status'] | null; type: RepairEventItem['type']; createdAt: string }[];
   photos: { id: string; ready: boolean }[];
 }
+
+// ---------- Compliance ----------
+export interface ComplianceCell {
+  type: 'GAS_SAFETY' | 'EICR' | 'EPC' | 'SMOKE_CO_ALARM' | 'LICENCE' | 'INSURANCE';
+  status: 'VALID' | 'EXPIRING' | 'EXPIRED' | 'MISSING' | 'NOT_NEEDED';
+  documentId: string | null;
+  expiresOn: string | null;
+  daysLeft: number | null;
+}
+
+export interface ComplianceRow {
+  propertyId: string;
+  address: string;
+  type: string;
+  cells: ComplianceCell[];
+  worst: 'VALID' | 'EXPIRING' | 'EXPIRED' | 'MISSING';
+}
+
+export interface ComplianceBoard {
+  types: ComplianceCell['type'][];
+  rows: ComplianceRow[];
+  counts: { VALID: number; EXPIRING: number; EXPIRED: number; MISSING: number };
+}

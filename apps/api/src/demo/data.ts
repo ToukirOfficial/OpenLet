@@ -68,3 +68,15 @@ export const REPAIRS = [
   { property: 'canal', unit: 0, tenancy: null, category: 'HEATING', title: 'Bedroom radiator cold', description: 'Radiator needed bleeding and a new valve.', priority: 'ROUTINE', status: 'CLOSED', contractor: 'gas', daysAgo: 130, byTenant: false, cost: 12000 },
   { property: 'chapel', unit: 0, tenancy: null, category: 'OTHER', title: 'Clear gutters before winter', description: 'Front and back gutters full of leaves.', priority: 'ROUTINE', status: 'CLOSED', contractor: 'handy', daysAgo: 60, byTenant: false, cost: 9500 },
 ] as const;
+
+/** Certificates per property: days until expiry (negative = expired). Missing ones are simply left out. */
+export const CERTIFICATES: Record<string, Partial<Record<'GAS_SAFETY' | 'EICR' | 'EPC' | 'SMOKE_CO_ALARM' | 'LICENCE' | 'INSURANCE', number>>> = {
+  calder: { GAS_SAFETY: 210, EICR: 900, EPC: 2400, SMOKE_CO_ALARM: 120 },
+  mill: { GAS_SAFETY: 40, EICR: 1300, EPC: 1900 },
+  weavers: { GAS_SAFETY: 160, EICR: 21, EPC: 1500, LICENCE: 700, SMOKE_CO_ALARM: 95 },
+  beacon: { GAS_SAFETY: -12, EICR: 1100, EPC: 2100, SMOKE_CO_ALARM: 200 },
+  station: { EICR: 600, SMOKE_CO_ALARM: 250 },
+  moorside: { GAS_SAFETY: 300, EICR: 1400, EPC: 3000, SMOKE_CO_ALARM: 180, INSURANCE: 150 },
+  canal: { EICR: 1000, EPC: 2600, SMOKE_CO_ALARM: 9 },
+  chapel: { GAS_SAFETY: 280, EPC: 1700 },
+};

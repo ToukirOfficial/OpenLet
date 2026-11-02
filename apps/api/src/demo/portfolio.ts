@@ -4,7 +4,9 @@ import { DEFAULT_SETTINGS } from '../common/settings.js';
 import { toDb } from '../common/dates.js';
 import { rentPeriods } from '../ledger/schedule.js';
 import { CHARGE_AHEAD_DAYS } from '../ledger/ledger.service.js';
-import { CONTRACTORS, PROPERTIES, REPAIRS, TENANCIES, TENANTS } from './data.js';
+import { CERTIFICATES, CONTRACTORS, PROPERTIES, REPAIRS, TENANCIES, TENANTS } from './data.js';
+import { demoPdf, storeDemoFile } from './files.js';
+import { DOCUMENT_TYPE_LABELS, formatDate } from '@openlet/shared';
 import { randomToken, sha256 } from '../common/crypto.js';
 import { config } from '../config.js';
 
@@ -193,6 +195,28 @@ export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' 
       });
       if ('link' in def && def.link) contractorUrl = `${config().APP_URL}/job/${token}`;
     }
+  }
+
+  // Certificates in every state, and a few tenancy documents shared with the tenants.
+  for (const [key, certs] of Object.entries(CERTIFICATES)) {
+    const property = PROPERTIES.find((p) => p.key === key)!;
+    for (const [type, days] of Object.entries(certs) as [keyof typeof DOCUMENT_TYPE_LABELS, number][]) {
+      const expiresOn = addDays(today, days);
+      const issuedOn = addDays(expiresOn, type === 'EPC' ? -3650 : type === 'EICR' ? -1825 : -365);
+      const file = await storeDemoFile(await demoPdf(DOCUMENT_TYPE_LABELS[type], [`${property.addressLine1}, ${property.town} ${property.postcode}`, `Issued ${formatDate(issuedOn)}`, `Valid until ${formatDate(expiresOn)}`]));
+      await prisma.document.create({
+        data: { workspaceId, propertyId: properties[key]!.id, type, title: DOCUMENT_TYPE_LABELS[type], storageKey: file.key, mime: 'application/pdf', sizeBytes: file.size, issuedOn: toDb(issuedOn), expiresOn: toDb(expiresOn), sharedWithTenant: type === 'GAS_SAFETY' || type === 'EPC', uploadedByType: 'STAFF', isDemo: true },
+      });
+    }
+  }
+  for (const [tkey, title, type] of [
+    ['calder:0:tom', 'Tenancy agreement', 'TENANCY_AGREEMENT'],
+    ['calder:0:tom', 'How to Rent guide', 'HOW_TO_RENT'],
+    ['calder:0:tom', 'Deposit protection certificate', 'DEPOSIT_CERTIFICATE'],
+    ['mill:1:ellie', 'Tenancy agreement', 'TENANCY_AGREEMENT'],
+  ] as const) {
+    const file = await storeDemoFile(await demoPdf(title, ['Calder Valley Lettings', 'This is fake demo data.']));
+    await prisma.document.create({ data: { workspaceId, tenancyId: tenancies[tkey]!, type, title, storageKey: file.key, mime: 'application/pdf', sizeBytes: file.size, sharedWithTenant: true, uploadedByType: 'STAFF', isDemo: true } });
   }
 
   return { workspaceId, workspaceName: ws.name, contractorUrl, properties, tenants, contractors, tenancies, today };

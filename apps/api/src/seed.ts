@@ -3,6 +3,8 @@
  * seeded workspace and recreates it. Logins are listed in ASSUMPTIONS.md.
  */
 import 'reflect-metadata';
+import { rm } from 'node:fs/promises';
+import path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/prisma/client.js';
 import { hashPassword } from './auth/passwords.js';
@@ -22,7 +24,11 @@ export async function seed(prisma: PrismaClient) {
   const emails = Object.values(SEED_USERS).map((u) => u.email);
   const existing = await prisma.user.findMany({ where: { email: { in: emails } }, select: { id: true } });
   const old = await prisma.membership.findMany({ where: { userId: { in: existing.map((u) => u.id) } }, select: { workspaceId: true } });
-  await prisma.workspace.deleteMany({ where: { id: { in: old.map((m) => m.workspaceId) } } });
+  const oldIds = old.map((m) => m.workspaceId);
+  // Remove the old seed's files too, not just its rows.
+  const files = await prisma.document.findMany({ where: { workspaceId: { in: oldIds } }, select: { storageKey: true } });
+  await Promise.all(files.map((f) => rm(path.join(path.resolve(config().STORAGE_DIR), f.storageKey), { force: true })));
+  await prisma.workspace.deleteMany({ where: { id: { in: oldIds } } });
   await prisma.user.deleteMany({ where: { email: { in: emails } } });
 
   const users = Object.fromEntries(
