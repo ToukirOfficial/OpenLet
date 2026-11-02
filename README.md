@@ -1,5 +1,8 @@
 # OpenLet
 
+[![CI](https://github.com/ToukirOfficial/OpenLet/actions/workflows/ci.yml/badge.svg)](https://github.com/ToukirOfficial/OpenLet/actions/workflows/ci.yml)
+[![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-135e4b.svg)](LICENSE)
+
 **Free, open-source property and tenancy management for small landlords and small letting agents.** Properties, tenants, rent, repairs, documents and certificates in one place, with a portal for your tenants and a job page for your contractors.
 
 Self-hosted: install it on your own server with one command, keep your own data, pay nothing.
@@ -7,6 +10,22 @@ Self-hosted: install it on your own server with one command, keep your own data,
 **[Try the live demo](https://openlet.toukirahmedrony.com/demo)**: one click as the landlord or as a tenant. It's a made-up agency with eight properties in West Yorkshire, and it resets every night.
 
 > Screenshots: the live demo is the best tour. (Screenshot images for this README are still to be added.)
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Who it's for](#who-its-for)
+- [Self-host with Docker](#self-host-with-docker)
+  - [First login](#first-login)
+  - [Backups](#backups)
+  - [Upgrading](#upgrading)
+- [Running it locally (development)](#running-it-locally-development)
+- [Deploying to a server without Docker](#deploying-to-a-server-without-docker)
+- [Architecture](#architecture)
+- [Hard problems and decisions](#hard-problems-and-decisions)
+- [Tests](#tests)
+- [Contributing](#contributing)
+- [Licence](#licence)
 
 ## What it does
 
@@ -37,15 +56,15 @@ You need a server with Docker (2 GB of memory is plenty).
 ```bash
 git clone https://github.com/ToukirOfficial/OpenLet.git
 cd OpenLet
-cp .env.example .env
+./scripts/init-env.sh      # writes .env with fresh random secrets
 ```
 
-Edit `.env`:
+Then edit `.env`:
 
 - `APP_URL`: the address people will use, e.g. `https://lettings.example.com`.
-- `JWT_SECRET`: a long random string (`openssl rand -base64 48`).
-- `POSTGRES_PASSWORD` (optional): a database password for the bundled PostgreSQL.
 - Email: set `MAIL_TRANSPORT=smtp` and the `SMTP_*` settings for your provider (any SMTP service works). With `MAIL_TRANSPORT=log`, emails are only written to the worker log.
+
+Every other setting is described in [`.env.example`](.env.example).
 
 Then:
 
@@ -95,6 +114,12 @@ pnpm build && pnpm db:seed      # fake demo data and logins (see ASSUMPTIONS.md)
 pnpm dev                        # web on :8030, API on :8130, worker
 ```
 
+The seed only runs with `DEMO_MODE=true` (or `pnpm --filter @openlet/api db:seed -- --dev` on a development machine), and the seeded logins only work while `DEMO_MODE=true`, because their password is published.
+
+## Deploying to a server without Docker
+
+`deploy.sh` builds everything locally and uploads a release to a server running PM2 behind nginx. Server details live only in `deploy.env`, which is git-ignored: copy [`deploy.env.example`](deploy.env.example) and fill in the SSH alias, folders, site address and ports. The script checks the ports are free on the server before it starts, backs up the database before running new migrations, and switches back to the previous release if the health check fails.
+
 ## Architecture
 
 ```
@@ -127,6 +152,10 @@ pnpm test
 ```
 
 The API tests run against real PostgreSQL and Redis (a separate `_test` database). They cover login and refresh tokens, every role and workspace-isolation rule, tenant isolation, contractor link scope and expiry, rent charge generation (monthly including the 29th–31st, weekly, four-weekly, rent changes, end dates, idempotency), payment allocation and balances, reminder scheduling, compliance status and retention anonymisation.
+
+## Contributing
+
+This repository is public. A pre-commit hook (`.githooks`, switched on by `pnpm install`) runs [`scripts/scan-secrets.sh`](scripts/scan-secrets.sh) on staged changes and stops any commit containing keys, passwords, IP addresses or values from your `deploy.env`. Run `pnpm scan` to check the whole repository.
 
 ## Licence
 

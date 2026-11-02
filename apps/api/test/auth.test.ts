@@ -28,6 +28,8 @@ const codeFrom = (text: string) => /\b(\d{6})\b/.exec(text)?.[1] ?? '';
 
 describe('first-run setup', () => {
   it('creates the Owner and workspace once, then closes for good', async () => {
+    // Other test files (the demo seed) may have finished setup already: start from a fresh install.
+    await ctx.prisma.installState.deleteMany();
     expect((await anon(ctx).get('/setup')).body.setupNeeded).toBe(true);
     const res = await anon(ctx).post('/setup', { name: 'Olive Owner', email: 'olive@test.example', password: PASSWORD, workspaceName: 'Olive Lettings' });
     expect(res.status).toBe(201);

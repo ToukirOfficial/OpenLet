@@ -1,9 +1,11 @@
 # OpenLet web app (Next.js standalone server).
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CI=true
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
+COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --filter @openlet/web...
 COPY packages/shared packages/shared

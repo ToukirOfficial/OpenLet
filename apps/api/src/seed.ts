@@ -40,16 +40,28 @@ export async function seed(prisma: PrismaClient) {
   return seedPortfolio(prisma, users);
 }
 
+/**
+ * The seed creates logins with a published password, so it only runs for the demo site (DEMO_MODE=true),
+ * or with --dev on a machine that isn't production (the accounts then can't log in unless DEMO_MODE is on).
+ */
+export function seedAllowed(env: { DEMO_MODE: boolean; NODE_ENV: string }, argv: string[]): { ok: true } | { ok: false; reason: string } {
+  if (env.DEMO_MODE) return { ok: true };
+  if (argv.includes('--dev') && env.NODE_ENV !== 'production') return { ok: true };
+  return { ok: false, reason: env.NODE_ENV === 'production' ? 'Refusing to seed a production install unless DEMO_MODE=true.' : 'Refusing to seed: set DEMO_MODE=true, or pass --dev on a development machine.' };
+}
+
 const isMain = process.argv[1]?.endsWith('seed.js') ?? false;
 if (isMain) {
-  if (config().NODE_ENV === 'production' && !config().DEMO_MODE) {
-    console.error('Refusing to seed: this is a production install without DEMO_MODE=true. The seed creates logins with a published password.');
+  const allowed = seedAllowed(config(), process.argv.slice(2));
+  if (!allowed.ok) {
+    console.error(allowed.reason);
     process.exit(1);
   }
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: config().DATABASE_URL }) });
   const result = await seed(prisma);
   console.log(`Seeded workspace "${result.workspaceName}". Password for every seed login: ${SEED_PASSWORD}`);
   for (const u of Object.values(SEED_USERS)) console.log(`  ${u.email}`);
+  if (!config().DEMO_MODE) console.log('DEMO_MODE is off, so these logins are refused. Set DEMO_MODE=true in .env to use them.');
   if (result.contractorUrl) console.log(`Contractor job link: ${result.contractorUrl}`);
   await prisma.$disconnect();
 }

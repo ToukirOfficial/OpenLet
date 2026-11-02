@@ -1,10 +1,12 @@
 # OpenLet API and worker (same image; the worker runs a different command).
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CI=true
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
 
 FROM base AS build
 RUN pnpm install --frozen-lockfile --filter @openlet/api...

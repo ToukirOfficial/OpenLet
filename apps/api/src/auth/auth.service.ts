@@ -84,14 +84,13 @@ export class AuthService {
     await this.limits.hit(`login:email:${sha256(input.email)}`, 10, 900);
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
     const ok = user ? await verifyPassword(user.passwordHash, input.password) : (await verifyPassword(await dummyHash(), input.password), false);
-    if (!user || !ok) {
+    // Seeded demo accounts have a published password: they only exist for the demo site (DEMO_MODE=true).
+    if (!user || !ok || (user.isDemo && !config().DEMO_MODE)) {
       await this.activity.audit({ userId: user?.id ?? null, action: 'login.failed', ip: meta.ip });
       throw invalidLogin();
     }
-    // Trusted browsers skip the code. So do the seeded demo accounts, but only on the demo site or in local
-    // development: on a real install they'd need a code sent to an address nobody can read.
-    const demoSkip = user.isDemo && (config().DEMO_MODE || config().NODE_ENV !== 'production');
-    if (demoSkip || (await this.sessions.isTrusted(user.id, meta.deviceToken))) {
+    // Trusted browsers skip the code, and so do demo accounts on the demo site.
+    if (user.isDemo || (await this.sessions.isTrusted(user.id, meta.deviceToken))) {
       await this.completeLogin(user.id, meta, false);
       return { status: 'ok' };
     }
