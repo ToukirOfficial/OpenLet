@@ -1,13 +1,7 @@
 'use client';
 
-import { Wrench } from 'lucide-react';
-import { EmptyState } from '@/components/states';
+import { RepairsFor } from '@/components/repair-list';
 
-/** Filled in by the repairs phase. */
-export function PropertyRepairs({ propertyId: _propertyId }: { propertyId: string }) {
-  return (
-    <EmptyState icon={Wrench} title="No repairs yet">
-      Repairs reported by tenants or logged by your team will be listed here.
-    </EmptyState>
-  );
+export function PropertyRepairs({ propertyId }: { propertyId: string }) {
+  return <RepairsFor query={`propertyId=${propertyId}`} emptyText="Repairs reported by tenants or logged by your team will be listed here." newHref={`/app/repairs/new?propertyId=${propertyId}`} />;
 }

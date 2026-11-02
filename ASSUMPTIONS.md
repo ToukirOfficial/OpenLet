@@ -81,3 +81,11 @@ The seed also prints a contractor job link for one open repair.
 - "Overdue" starts the day after the due date (London time).
 - A reversal cancels the whole original entry. To correct an amount, reverse it and record the right one.
 - Statement PDFs and other generated files are kept for 24 hours, and only the person who asked for one can download it.
+
+## Repairs (Phase 5)
+- Repairs get a short number per workspace (#1, #2…) for tenants and contractors to quote.
+- A repair logged against a unit is linked to that unit's current tenancy, so its tenants see it and get updates.
+- Assigning a contractor to a "reported" repair marks it acknowledged. Assigning again sends a new link and the old one stops working.
+- Contractors see the job, access notes, status changes and their own notes. They never see landlord–tenant comments, internal notes or other repairs, and see the tenant's name and phone only if the workspace allows it.
+- During the grace period after closing, the contractor can still open the job but can't change it.
+- Tenants are emailed when the status changes, a visit is booked, or staff share a comment with them.

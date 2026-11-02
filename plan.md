@@ -71,7 +71,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. Ledger tab and portfolio arrears list (by amount and age).
 4. Statement/receipt PDF for any date range (queued).
 
-**Phase 5 — Repairs and contractors**
+**Phase 5 — Repairs and contractors** ✅ done
 1. Staff-logged repairs, priorities with target times, status flow with timeline, overdue flag.
 2. Comments (tenant-visible or internal), assign contractor, contractor email with link.
 3. Contractor job page: details, access notes, tenant contact if allowed, status, visit date, photos, notes, cost; link scope/expiry tests.
