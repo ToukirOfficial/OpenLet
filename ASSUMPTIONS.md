@@ -75,3 +75,9 @@ The seed also prints a contractor job link for one open repair.
 - A rent change must start after rent has already been charged; for a past correction, add a one-off charge or credit.
 - Recording notice, ending a tenancy or shortening its end date reverses any rent already charged for periods starting after the last day (new reversal entries; nothing is deleted).
 - A deposit counts as overdue for protection the set number of days (default 30) after the date received.
+
+## Rent ledger (Phase 4)
+- The balance counts charges due up to today. A charge that appears early (up to 14 days before its due date) shows as "upcoming" and isn't owed yet; money paid early shows as credit until then.
+- "Overdue" starts the day after the due date (London time).
+- A reversal cancels the whole original entry. To correct an amount, reverse it and record the right one.
+- Statement PDFs and other generated files are kept for 24 hours, and only the person who asked for one can download it.

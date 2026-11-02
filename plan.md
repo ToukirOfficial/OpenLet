@@ -65,7 +65,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. Deposit record, protection details and return with deductions.
 4. Invite tenant to portal, invite status, tenant login lands in `/portal`; tenant-isolation tests.
 
-**Phase 4 — Rent ledger**
+**Phase 4 — Rent ledger** ✅ done
 1. Daily charge job (monthly with 29th–31st, weekly, four-weekly, rent changes, end dates, idempotent); tests.
 2. Payments, other charges, credits and reversals; FIFO allocation, running balance, days overdue; tests.
 3. Ledger tab and portfolio arrears list (by amount and age).
