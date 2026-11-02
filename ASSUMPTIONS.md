@@ -51,7 +51,7 @@ Decisions the PRD and FEATURES.md don't make. Change any of these by telling me.
 - Demo has two fixed accounts (landlord Owner and one tenant); everything resets nightly from the seed, and demo emails are stored in the database for the mail viewer, never sent.
 
 ## Seed logins (local and demo only, fake data)
-`pnpm db:seed` creates the "Calder Valley Lettings" workspace. Every seed login uses the password **openlet-demo-2026** and skips the email code (they're marked as demo accounts).
+`pnpm db:seed` creates the "Calder Valley Lettings" workspace. Every seed login uses the password **openlet-demo-2026**. Because that password is published, the seed only runs with `DEMO_MODE=true` (or `--dev` on a non-production machine), and the seeded accounts can only log in, and skip the email code, while `DEMO_MODE=true`. The local `.env` has `DEMO_MODE=true`.
 
 | Role | Email |
 |---|---|

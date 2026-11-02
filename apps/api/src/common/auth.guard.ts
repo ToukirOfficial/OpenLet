@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { WorkspaceRole } from '@openlet/shared';
 import { PrismaService } from '../prisma.service.js';
+import { config } from '../config.js';
 import type { RequestAuth } from './auth-context.js';
 import { COOKIES, getCookie } from './cookies.js';
 import { verifyAccessToken } from './crypto.js';
@@ -50,7 +51,8 @@ export class AuthGuard implements CanActivate {
       where: { id: claims.sub },
       select: { id: true, name: true, email: true, isDemo: true },
     });
-    if (!user) throw notLoggedIn();
+    // A demo account's session stops working the moment demo mode is turned off.
+    if (!user || (user.isDemo && !config().DEMO_MODE)) throw notLoggedIn();
     const base = { userId: user.id, name: user.name, email: user.email, isDemo: user.isDemo, ip: req.ip ?? null };
 
     const header = req.get('x-workspace-id');
