@@ -68,3 +68,10 @@ The seed also prints a contractor job link for one open repair.
 - The first photo uploaded to a property becomes its cover picture.
 - Contractors and properties with history are archived, not deleted. Tenants with tenancies can't be deleted; retention anonymises them later.
 - Workspace logos are public images (they appear in emails), served by workspace id.
+
+## Tenancies (Phase 3)
+- A unit can't have two tenancies whose dates overlap.
+- Weekly and four-weekly rent ignores the due day: it's due every 7 or 28 days from the start date.
+- A rent change must start after rent has already been charged; for a past correction, add a one-off charge or credit.
+- Recording notice, ending a tenancy or shortening its end date reverses any rent already charged for periods starting after the last day (new reversal entries; nothing is deleted).
+- A deposit counts as overdue for protection the set number of days (default 30) after the date received.

@@ -59,7 +59,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 3. Private uploads: content-type sniffing, size limit, metadata/GPS strip, HEIC→JPEG on queue, permission-checked download, audit on download.
 4. Internal notes and activity timeline on every record.
 
-**Phase 3 — Tenancies and deposits**
+**Phase 3 — Tenancies and deposits** ✅ done
 1. New-tenancy wizard (unit, joint tenants, dates or periodic, rent, frequency, due day, deposit); calculated statuses.
 2. Rent changes with history; notice and end tenancy; guarantors with documents.
 3. Deposit record, protection details and return with deductions.

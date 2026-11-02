@@ -26,6 +26,27 @@ export const TENANTS = [
   { key: 'george', firstName: 'George', lastName: 'Sutcliffe', phone: '07700 900111' },
   { key: 'mei', firstName: 'Mei', lastName: 'Lin', phone: '07700 900112' },
   { key: 'sean', firstName: 'Seán', lastName: 'Gallagher', phone: '07700 900113' },
+  { key: 'hannah', firstName: 'Hannah', lastName: 'Royd', phone: '07700 900114' },
+  { key: 'kofi', firstName: 'Kofi', lastName: 'Mensah', phone: '07700 900115' },
+] as const;
+
+/**
+ * Tenancies, with dates relative to today (in months or days) so the demo always looks current.
+ * `start`/`end` are month offsets from today (negative = past); `day` is the day of the month.
+ */
+export const TENANCIES = [
+  { property: 'calder', unit: 0, tenants: ['tom', 'priya'], startMonths: -14, day: 1, endMonths: null, rent: 89500, frequency: 'MONTHLY', deposit: { amount: 103200, protected: true }, pays: 'ON_TIME' },
+  { property: 'mill', unit: 0, tenants: ['dan'], startMonths: -9, day: 15, endMonths: 3, rent: 65000, frequency: 'MONTHLY', deposit: { amount: 75000, protected: false }, pays: 'ON_TIME' },
+  { property: 'mill', unit: 1, tenants: ['ellie'], startMonths: -11, day: 28, endMonths: null, rent: 62500, frequency: 'MONTHLY', deposit: { amount: 72100, protected: true }, pays: 'ARREARS' },
+  { property: 'weavers', unit: 0, tenants: ['kasia'], startMonths: -8, day: 2, endMonths: null, rent: 12000, frequency: 'WEEKLY', deposit: { amount: 52000, protected: true }, pays: 'ON_TIME' },
+  { property: 'weavers', unit: 1, tenants: ['ravi'], startMonths: -10, day: 5, endMonths: null, rent: 48000, frequency: 'FOUR_WEEKLY', deposit: { amount: 55000, protected: true }, pays: 'PART' },
+  { property: 'weavers', unit: 2, tenants: ['lucy'], startMonths: -6, day: 4, endMonths: null, rent: 11800, frequency: 'WEEKLY', deposit: { amount: 51000, protected: true }, pays: 'ON_TIME', noticeDays: 27 },
+  { property: 'weavers', unit: 4, tenants: ['jack'], startMonths: -13, day: 6, endMonths: null, rent: 52000, frequency: 'FOUR_WEEKLY', deposit: { amount: 60000, protected: true }, pays: 'LATE' },
+  { property: 'beacon', unit: 0, tenants: ['amira'], startMonths: -9, day: 31, endMonths: 3, rent: 76000, frequency: 'MONTHLY', deposit: { amount: 87600, protected: true }, pays: 'ON_TIME' },
+  { property: 'station', unit: 0, tenants: ['george'], startMonths: -7, day: 10, endMonths: 1, rent: 69500, frequency: 'MONTHLY', deposit: { amount: 80100, protected: true }, pays: 'ON_TIME' },
+  { property: 'moorside', unit: 0, tenants: ['mei', 'sean'], startMonths: -17, day: 5, endMonths: null, rent: 110000, frequency: 'MONTHLY', deposit: { amount: 126900, protected: true }, pays: 'ON_TIME', rentRise: { months: -5, rent: 115000 } },
+  { property: 'canal', unit: 0, tenants: ['hannah'], startMonths: -20, day: 1, endMonths: -3, rent: 72000, frequency: 'MONTHLY', deposit: { amount: 83000, protected: true, returned: true }, pays: 'ON_TIME', ended: true },
+  { property: 'canal', unit: 0, tenants: ['kofi'], startMonths: 1, day: 1, endMonths: 13, rent: 74500, frequency: 'MONTHLY', deposit: { amount: 85900, protected: false, notReceived: true }, pays: 'NONE' },
 ] as const;
 
 export const CONTRACTORS = [
