@@ -226,6 +226,11 @@ function Manage({ r, set }: { r: RepairDetail; set: (r: RepairDetail) => void })
               first.
             </p>
           ) : null}
+          {r.demoUrl ? (
+            <a href={r.demoUrl} target="_blank" rel="noreferrer" className="block rounded-md border border-brass/40 bg-brass-tint px-3 py-2 text-sm font-semibold text-slate hover:underline">
+              Demo: open the contractor’s job page
+            </a>
+          ) : null}
           {r.link ? (
             <div className="rounded-md bg-stone px-3 py-2 text-sm">
               <p>{r.link.active ? 'The job link works.' : 'The job link has expired.'}</p>
