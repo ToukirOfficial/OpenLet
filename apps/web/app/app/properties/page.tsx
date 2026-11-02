@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Building2, Plus, Wrench } from 'lucide-react';
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, type Page, type PropertyListItem, type PropertyStatus } from '@openlet/shared';
 import { PageHeader } from '@/components/app-shell';
@@ -14,9 +15,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useApi } from '@/lib/use-api';
 import { PROPERTY_TONE } from '@/lib/tones';
 
-export default function PropertiesPage() {
+function List() {
+  const initial = (useSearchParams().get('status') ?? '') as PropertyStatus | '';
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<PropertyStatus | ''>('');
+  const [status, setStatus] = useState<PropertyStatus | ''>(initial);
   const params = new URLSearchParams({ ...(q ? { q } : {}), ...(status ? { status } : {}) });
   const { data, error, loading, reload } = useApi<Page<PropertyListItem>>(`/properties?${params}`);
   const filtered = !!q || !!status;
@@ -113,5 +115,13 @@ export default function PropertiesPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function PropertiesPage() {
+  return (
+    <Suspense>
+      <List />
+    </Suspense>
   );
 }

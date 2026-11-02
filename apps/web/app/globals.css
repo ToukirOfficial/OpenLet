@@ -53,6 +53,9 @@
   --info: #285a93;
   --info-tint: #e5eef8;
 
+  /* Chart marks: the door-green hue at a chroma that reads as colour, not grey (dataviz validator: PASS). */
+  --chart: #13805f;
+
   /* shadcn/ui variables mapped onto the palette */
   --background: var(--stone);
   --foreground: var(--slate);
@@ -96,6 +99,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-chart: var(--chart);
   --color-door: var(--door);
   --color-door-tint: var(--door-tint);
   --color-brass: var(--brass);

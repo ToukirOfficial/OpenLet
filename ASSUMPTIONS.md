@@ -103,3 +103,11 @@ The seed also prints a contractor job link for one open repair.
 - Repairs reported by tenants start as "routine"; staff set the real priority.
 - A tenant message emails everyone in the team; a team message emails every tenant on the tenancy.
 - Tenants can change their phone and emergency contact; name and email changes go through the landlord.
+
+## Dashboard and reports (Phase 8)
+- The dashboard is cached in Redis for up to a minute and cleared whenever rent, repairs, tenancies, properties or documents change.
+- "Needs attention" shows at most 12 items: urgent ones (long arrears, overdue repairs, expired certificates, unprotected deposits) first.
+- Income counts payments recorded in the period, less reversed payments. The maintenance report covers repairs reported in the period that have a cost.
+- Every team member can view reports on screen. Downloading a CSV needs Owner or Manager; the full export needs Owner. Both are audited.
+- The full export leaves out passwords, tokens, internal file names and user ids.
+- Chart bars use a slightly brighter step of the brand green (#13805f) so they read as colour, checked with the palette validator.

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { KeyRound, Plus } from 'lucide-react';
 import { FREQUENCY_SHORT, TENANCY_STATUS_LABELS, formatDate, formatPence, type Page, type TenancyListItem, type TenancyStatus } from '@openlet/shared';
 import { PageHeader } from '@/components/app-shell';
@@ -15,9 +16,10 @@ import { TENANCY_TONE } from '@/lib/tones';
 import { useApi } from '@/lib/use-api';
 import { Balance } from '@/components/balance';
 
-export default function TenanciesPage() {
+function List() {
+  const initial = (useSearchParams().get('status') ?? '') as TenancyStatus | '';
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<TenancyStatus | ''>('');
+  const [status, setStatus] = useState<TenancyStatus | ''>(initial);
   const params = new URLSearchParams({ ...(q ? { q } : {}), ...(status ? { status } : {}) });
   const { data, error, loading, reload } = useApi<Page<TenancyListItem>>(`/tenancies?${params}`);
   return (
@@ -100,5 +102,13 @@ export default function TenanciesPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function TenanciesPage() {
+  return (
+    <Suspense>
+      <List />
+    </Suspense>
   );
 }

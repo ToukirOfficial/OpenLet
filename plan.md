@@ -87,7 +87,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 2. Report a repair with phone camera upload and follow progress; shared documents.
 3. Message threads per tenancy (staff inbox and portal) with email notifications; update own contact details.
 
-**Phase 8 — Dashboard, calendar and reports**
+**Phase 8 — Dashboard, calendar and reports** ✅ done
 1. Dashboard stat cards, "needs attention", activity feed (Redis-cached, under 1 s).
 2. Calendar month and list view: rent due, visits, expiries, tenancy start/end.
 3. Rent roll, income, arrears and maintenance reports with CSV (queued).
