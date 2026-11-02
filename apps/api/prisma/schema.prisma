@@ -1,0 +1,794 @@
+// OpenLet data model (plan.md). Ids are UUIDv7 from PostgreSQL 18. Money is integer pence (GBP).
+// Calendar dates (due dates, expiry dates) are @db.Date London calendar days; timestamps are UTC.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum WorkspaceRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum InviteKind {
+  MEMBER
+  TENANT
+}
+
+enum AuthCodePurpose {
+  LOGIN
+  RESET
+}
+
+enum PropertyType {
+  HOUSE
+  FLAT
+  HMO
+  BUNGALOW
+  OTHER
+}
+
+enum Furnished {
+  FURNISHED
+  PART_FURNISHED
+  UNFURNISHED
+}
+
+enum RentFrequency {
+  MONTHLY
+  WEEKLY
+  FOUR_WEEKLY
+}
+
+enum NoticeBy {
+  TENANT
+  LANDLORD
+}
+
+enum LedgerType {
+  RENT_CHARGE
+  OTHER_CHARGE
+  PAYMENT
+  CREDIT
+  REVERSAL
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  STANDING_ORDER
+  CASH
+  CARD
+  OTHER
+}
+
+enum DepositScheme {
+  DPS
+  TDS
+  MYDEPOSITS
+  OTHER
+}
+
+enum RtrMethod {
+  MANUAL_DOCUMENT
+  ONLINE_SHARE_CODE
+  IDVT
+  LANDLORD_CHECKING_SERVICE
+}
+
+enum RepairCategory {
+  HEATING
+  PLUMBING
+  ELECTRICAL
+  DAMP_MOULD
+  APPLIANCES
+  SECURITY
+  OTHER
+}
+
+enum RepairPriority {
+  EMERGENCY
+  URGENT
+  ROUTINE
+}
+
+enum RepairStatus {
+  REPORTED
+  ACKNOWLEDGED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum RepairEventType {
+  CREATED
+  STATUS
+  COMMENT
+  ASSIGNED
+  VISIT
+  COST
+  PHOTO
+}
+
+enum Visibility {
+  TENANT
+  INTERNAL
+}
+
+enum ActorType {
+  STAFF
+  TENANT
+  CONTRACTOR
+  SYSTEM
+}
+
+enum DocumentType {
+  TENANCY_AGREEMENT
+  GAS_SAFETY
+  EICR
+  EPC
+  DEPOSIT_CERTIFICATE
+  PRESCRIBED_INFORMATION
+  HOW_TO_RENT
+  RIGHT_TO_RENT_EVIDENCE
+  SMOKE_CO_ALARM
+  LICENCE
+  INSURANCE
+  INVENTORY
+  PHOTO
+  OTHER
+}
+
+enum JobStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+// ---------- Install, users and sessions ----------
+
+/// One row: set once the first-run setup has created the Owner. The setup screen is then closed for good.
+model InstallState {
+  id          Int      @id @default(1)
+  completedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  email        String   @unique
+  name         String
+  passwordHash String
+  isDemo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships    Membership[]
+  tenants        Tenant[]
+  refreshTokens  RefreshToken[]
+  authCodes      AuthCode[]
+  trustedDevices TrustedDevice[]
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String    @db.Uuid
+  familyId  String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  rotatedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+/// 6-digit login codes and password reset tokens, stored only as keyed hashes.
+model AuthCode {
+  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId     String          @db.Uuid
+  purpose    AuthCodePurpose
+  codeHash   String
+  attempts   Int             @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([codeHash])
+}
+
+/// A browser that passed the email code: no code needed there for 30 days.
+model TrustedDevice {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------- Workspaces ----------
+
+model Workspace {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name         String
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  logoKey      String?
+  logoMime     String?
+  /// Reminders, repair targets and other settings, validated by workspaceSettingsSchema.
+  settings     Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships Membership[]
+  invites     Invite[]
+  properties  Property[]
+  tenants     Tenant[]
+  tenancies   Tenancy[]
+  contractors Contractor[]
+  repairs     Repair[]
+  documents   Document[]
+  ledger      LedgerEntry[]
+  messages    Message[]
+  notes       Note[]
+  activities  Activity[]
+  auditLogs   AuditLog[]
+  reminders   ReminderSent[]
+  emails      OutboundEmail[]
+  exports     ExportJob[]
+}
+
+model Membership {
+  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Invite {
+  id          String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String         @db.Uuid
+  kind        InviteKind
+  email       String
+  role        WorkspaceRole?
+  tenantId    String?        @db.Uuid
+  tokenHash   String         @unique
+  invitedById String?        @db.Uuid
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([tenantId])
+  @@index([email])
+}
+
+// ---------- Portfolio ----------
+
+model Property {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId  String       @db.Uuid
+  addressLine1 String
+  addressLine2 String?
+  town         String
+  county       String?
+  postcode     String
+  type         PropertyType
+  bedrooms     Int
+  bathrooms    Int
+  furnished    Furnished
+  hasGas       Boolean      @default(true)
+  notes        String?
+  coverDocId   String?      @db.Uuid
+  archivedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  units        Unit[]
+  repairs      Repair[]
+  documents    Document[]
+  notesList    Note[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, postcode])
+}
+
+model Unit {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  propertyId String    @db.Uuid
+  name       String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenancies  Tenancy[]
+  repairs    Repair[]
+
+  @@index([propertyId])
+}
+
+model Tenant {
+  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId    String             @db.Uuid
+  userId         String?            @db.Uuid
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  dateOfBirth    DateTime?          @db.Date
+  emergencyName  String?
+  emergencyPhone String?
+  notes          String?
+  anonymisedAt   DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user           User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenancies      TenancyTenant[]
+  rightToRent    RightToRentCheck[]
+  invites        Invite[]
+  documents      Document[]
+  notesList      Note[]
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([workspaceId, lastName])
+}
+
+model RightToRentCheck {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenantId  String    @db.Uuid
+  checkedOn DateTime  @db.Date
+  method    RtrMethod
+  /// Only for time-limited permission: a follow-up check is due before this date.
+  expiresOn DateTime? @db.Date
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([expiresOn])
+}
+
+model Contractor {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String    @db.Uuid
+  name        String
+  company     String?
+  trade       String
+  email       String
+  phone       String?
+  notes       String?
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  repairs     Repair[]
+
+  @@index([workspaceId])
+}
+
+// ---------- Tenancies and money ----------
+
+model Tenancy {
+  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId      String          @db.Uuid
+  unitId           String          @db.Uuid
+  startDate        DateTime        @db.Date
+  /// null = rolling (periodic)
+  endDate          DateTime?       @db.Date
+  frequency        RentFrequency
+  /// Monthly: day of the month (29–31 fall back to the month's last day). Weekly/four-weekly count from the start date.
+  dueDay           Int
+  remindersEnabled Boolean         @default(true)
+  noticeBy         NoticeBy?
+  noticeGivenOn    DateTime?       @db.Date
+  noticeEndDate    DateTime?       @db.Date
+  endedOn          DateTime?       @db.Date
+  archivedAt       DateTime?
+  /// Rent charges have been generated up to this date (inclusive).
+  chargedThrough   DateTime?       @db.Date
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  unit             Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  tenants          TenancyTenant[]
+  rentChanges      RentChange[]
+  guarantors       Guarantor[]
+  deposit          Deposit?
+  ledger           LedgerEntry[]
+  repairs          Repair[]
+  messages         Message[]
+  documents        Document[]
+  notesList        Note[]
+
+  @@index([workspaceId])
+  @@index([unitId])
+  @@index([workspaceId, endDate])
+}
+
+model TenancyTenant {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenancyId String   @db.Uuid
+  tenantId  String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenancy   Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenancyId, tenantId])
+  @@index([tenantId])
+}
+
+/// Rent history. The first row is the starting rent; each later row applies to periods starting on or after effectiveFrom.
+model RentChange {
+  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenancyId     String   @db.Uuid
+  amountPence   Int
+  effectiveFrom DateTime @db.Date
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenancy       Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenancyId, effectiveFrom])
+  @@index([tenancyId])
+}
+
+model Guarantor {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenancyId String   @db.Uuid
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenancy   Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@index([tenancyId])
+}
+
+model Deposit {
+  id               String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  tenancyId        String             @unique @db.Uuid
+  amountPence      Int
+  receivedOn       DateTime?          @db.Date
+  scheme           DepositScheme?
+  schemeReference  String?
+  protectedOn      DateTime?          @db.Date
+  prescribedInfoOn DateTime?          @db.Date
+  returnedOn       DateTime?          @db.Date
+  returnedPence    Int?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  tenancy          Tenancy            @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  deductions       DepositDeduction[]
+}
+
+model DepositDeduction {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  depositId   String   @db.Uuid
+  reason      String
+  amountPence Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deposit     Deposit  @relation(fields: [depositId], references: [id], onDelete: Cascade)
+
+  @@index([depositId])
+}
+
+/// Append-only. Corrections are a REVERSAL of the original plus a new entry; rows are never updated or deleted.
+model LedgerEntry {
+  id          String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String         @db.Uuid
+  tenancyId   String         @db.Uuid
+  type        LedgerType
+  /// Always positive; the type says which way it moves the balance.
+  amountPence Int
+  /// Charges: the due date. Payments and credits: the date received.
+  date        DateTime       @db.Date
+  periodStart DateTime?      @db.Date
+  periodEnd   DateTime?      @db.Date
+  description String?
+  method      PaymentMethod?
+  reference   String?
+  reversesId  String?        @unique @db.Uuid
+  createdById String?        @db.Uuid
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tenancy     Tenancy        @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  reverses    LedgerEntry?   @relation("Reversal", fields: [reversesId], references: [id], onDelete: Restrict)
+  reversedBy  LedgerEntry?   @relation("Reversal")
+
+  @@unique([tenancyId, type, periodStart])
+  @@index([workspaceId, date])
+  @@index([tenancyId, date])
+}
+
+// ---------- Repairs ----------
+
+model Repair {
+  id                 String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId        String           @db.Uuid
+  propertyId         String           @db.Uuid
+  unitId             String?          @db.Uuid
+  tenancyId          String?          @db.Uuid
+  reportedByTenantId String?          @db.Uuid
+  reference          Int
+  category           RepairCategory
+  title              String
+  description        String
+  accessNotes        String?
+  availability       String?
+  priority           RepairPriority
+  status             RepairStatus     @default(REPORTED)
+  targetAt           DateTime
+  visitAt            DateTime?
+  costPence          Int?
+  contractorId       String?          @db.Uuid
+  completedAt        DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  property           Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unit               Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  tenancy            Tenancy?         @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  contractor         Contractor?      @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  events             RepairEvent[]
+  links              ContractorLink[]
+  documents          Document[]
+
+  @@unique([workspaceId, reference])
+  @@index([workspaceId, status])
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([tenancyId])
+  @@index([contractorId])
+}
+
+model RepairEvent {
+  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  repairId   String          @db.Uuid
+  type       RepairEventType
+  visibility Visibility      @default(TENANT)
+  actorType  ActorType
+  actorId    String?         @db.Uuid
+  actorName  String?
+  fromStatus RepairStatus?
+  toStatus   RepairStatus?
+  body       String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  repair     Repair          @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId, createdAt])
+}
+
+/// A secure link for one contractor to one repair. Only the SHA-256 hash of the token is stored.
+model ContractorLink {
+  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  repairId     String    @db.Uuid
+  contractorId String    @db.Uuid
+  tokenHash    String    @unique
+  /// Set when the repair closes or is cancelled: closing time + grace period.
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  repair       Repair    @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId])
+}
+
+// ---------- Documents, messages, notes, activity ----------
+
+model Document {
+  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId      String       @db.Uuid
+  propertyId       String?      @db.Uuid
+  tenancyId        String?      @db.Uuid
+  tenantId         String?      @db.Uuid
+  repairId         String?      @db.Uuid
+  type             DocumentType
+  title            String
+  /// Random name on disk inside STORAGE_DIR; never derived from the uploaded file name.
+  storageKey       String       @unique
+  mime             String
+  sizeBytes        Int
+  issuedOn         DateTime?    @db.Date
+  expiresOn        DateTime?    @db.Date
+  sharedWithTenant Boolean      @default(false)
+  uploadedByType   ActorType
+  uploadedById     String?      @db.Uuid
+  /// false while a HEIC upload is still being converted on the queue.
+  ready            Boolean      @default(true)
+  isDemo           Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  property         Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenancy          Tenancy?     @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  tenant           Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  repair           Repair?      @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, type])
+  @@index([propertyId])
+  @@index([tenancyId])
+  @@index([tenantId])
+  @@index([repairId])
+  @@index([workspaceId, expiresOn])
+}
+
+model Message {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId    String    @db.Uuid
+  tenancyId      String    @db.Uuid
+  authorType     ActorType
+  authorUserId   String?   @db.Uuid
+  authorName     String
+  body           String
+  readByStaffAt  DateTime?
+  readByTenantAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tenancy        Tenancy   @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@index([tenancyId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+/// Internal notes: never shown to tenants.
+model Note {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String    @db.Uuid
+  propertyId  String?   @db.Uuid
+  tenancyId   String?   @db.Uuid
+  tenantId    String?   @db.Uuid
+  authorId    String?   @db.Uuid
+  authorName  String
+  body        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  property    Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenancy     Tenancy?  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([propertyId])
+  @@index([tenancyId])
+  @@index([tenantId])
+}
+
+/// Who did what and when: record timelines and the dashboard feed. Staff-only.
+model Activity {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String    @db.Uuid
+  actorType   ActorType
+  actorId     String?   @db.Uuid
+  actorName   String
+  action      String
+  summary     String
+  propertyId  String?   @db.Uuid
+  tenancyId   String?   @db.Uuid
+  tenantId    String?   @db.Uuid
+  repairId    String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([propertyId])
+  @@index([tenancyId])
+  @@index([tenantId])
+  @@index([repairId])
+}
+
+/// Sensitive actions (logins, exports, deletions, role changes, downloads). Append-only.
+/// workspaceId is null for account-level events (logins) and kept when a workspace is deleted.
+model AuditLog {
+  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String?    @db.Uuid
+  userId      String?    @db.Uuid
+  action      String
+  targetType  String?
+  targetId    String?
+  ip          String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId])
+}
+
+/// One row per reminder sent: the unique key makes each item and step go out at most once.
+model ReminderSent {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String    @db.Uuid
+  kind        String
+  itemId      String    @db.Uuid
+  step        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([kind, itemId, step])
+  @@index([workspaceId])
+}
+
+/// Demo mode only: every email is stored here for the demo mail viewer instead of being sent.
+model OutboundEmail {
+  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String?    @db.Uuid
+  to          String
+  subject     String
+  text        String
+  html        String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([workspaceId])
+}
+
+/// Queued PDFs, CSVs and the full data export. The file lives in STORAGE_DIR until it expires.
+model ExportJob {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId   String    @db.Uuid
+  requestedById String    @db.Uuid
+  kind          String
+  params        Json
+  status        JobStatus @default(PENDING)
+  storageKey    String?
+  fileName      String?
+  mime          String?
+  error         String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([requestedById])
+}
