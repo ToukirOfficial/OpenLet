@@ -420,3 +420,69 @@ export interface ComplianceBoard {
   rows: ComplianceRow[];
   counts: { VALID: number; EXPIRING: number; EXPIRED: number; MISSING: number };
 }
+
+// ---------- Messages ----------
+export interface MessageItem {
+  id: string;
+  authorType: 'STAFF' | 'TENANT' | 'CONTRACTOR' | 'SYSTEM';
+  authorName: string;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface ThreadSummary {
+  tenancyId: string;
+  tenantNames: string;
+  address: string;
+  lastMessage: { body: string; authorType: MessageItem['authorType']; createdAt: string } | null;
+  unread: number;
+}
+
+// ---------- Tenant portal ----------
+export interface PortalTenancy {
+  id: string;
+  address: string;
+  status: 'UPCOMING' | 'ACTIVE' | 'ENDING' | 'ENDED';
+  startDate: string;
+  endDate: string | null;
+  rentPence: number;
+  frequency: 'MONTHLY' | 'WEEKLY' | 'FOUR_WEEKLY';
+}
+
+export interface PortalHome {
+  workspace: { name: string; contactEmail: string | null; contactPhone: string | null; hasLogo: boolean; id: string };
+  tenancy: PortalTenancy | null;
+  tenancies: PortalTenancy[];
+  balancePence: number;
+  arrearsPence: number;
+  nextDueDate: string | null;
+  nextDuePence: number | null;
+  openRepairs: RepairListItem[];
+  latestMessages: MessageItem[];
+  unreadMessages: number;
+}
+
+export interface PortalRepair {
+  id: string;
+  reference: number;
+  title: string;
+  category: RepairListItem['category'];
+  status: RepairListItem['status'];
+  description: string;
+  accessNotes: string | null;
+  availability: string | null;
+  visitAt: string | null;
+  createdAt: string;
+  events: { type: RepairEventItem['type']; actorType: RepairEventItem['actorType']; actorName: string | null; toStatus: RepairListItem['status'] | null; body: string | null; createdAt: string }[];
+  photos: { id: string; ready: boolean }[];
+}
+
+export interface PortalDetails {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  emergencyName: string | null;
+  emergencyPhone: string | null;
+}

@@ -335,3 +335,5 @@ export const portalContactSchema = z.object({ phone, emergencyName: optionalText
 export const rangeQuery = z.object({ from: isoDate, to: isoDate, format: z.enum(['json', 'csv']).default('json') });
 export const formatQuery = z.object({ format: z.enum(['json', 'csv']).default('json') });
 export const calendarQuery = z.object({ from: isoDate, to: isoDate });
+
+export const portalTenancyQuery = z.object({ tenancyId: id.optional() });

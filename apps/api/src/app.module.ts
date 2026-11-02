@@ -16,9 +16,11 @@ import { ExportsModule } from './exports/exports.module.js';
 import { RepairsModule } from './repairs/repairs.module.js';
 import { ComplianceModule } from './compliance/compliance.module.js';
 import { RemindersModule } from './reminders/reminders.module.js';
+import { MessagesModule } from './messages/messages.module.js';
+import { PortalModule } from './portal/portal.module.js';
 
 @Module({
-  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule, ComplianceModule, RemindersModule],
+  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule, ComplianceModule, RemindersModule, MessagesModule, PortalModule],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

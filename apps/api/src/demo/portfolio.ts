@@ -219,5 +219,19 @@ export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' 
     await prisma.document.create({ data: { workspaceId, tenancyId: tenancies[tkey]!, type, title, storageKey: file.key, mime: 'application/pdf', sizeBytes: file.size, sharedWithTenant: true, uploadedByType: 'STAFF', isDemo: true } });
   }
 
+  // A few conversations.
+  const convo: [string, 'STAFF' | 'TENANT', string, string, number][] = [
+    ['calder:0:tom', 'TENANT', 'Tom Ashworth', 'Hi, the boiler is showing F28 again and there’s no hot water. I’ve reported it as a repair too.', 26],
+    ['calder:0:tom', 'STAFF', 'Sana Iqbal', 'Thanks Tom, sorry about that. Gary from Pennine Heating will come tomorrow morning. He has the key safe code.', 25],
+    ['calder:0:tom', 'TENANT', 'Tom Ashworth', 'Brilliant, thank you!', 24],
+    ['mill:1:ellie', 'STAFF', 'Marcus Webb', 'Hi Ellie, I noticed the last two months’ rent hasn’t come through. Is everything OK? We can talk about a payment plan.', 72],
+    ['mill:1:ellie', 'TENANT', 'Ellie Brennan', 'Sorry, I changed jobs and got paid late. Can I pay £300 extra a month until it’s cleared?', 50],
+  ];
+  for (const [key, authorType, authorName, body, hoursAgo] of convo) {
+    await prisma.message.create({
+      data: { workspaceId, tenancyId: tenancies[key]!, authorType, authorName, authorUserId: authorType === 'TENANT' && key.endsWith('tom') ? users.tenant.id : authorType === 'STAFF' ? users.staff.id : null, body, createdAt: new Date(Date.now() - hoursAgo * 3600_000), readByStaffAt: hoursAgo > 30 ? new Date() : null, readByTenantAt: new Date() },
+    });
+  }
+
   return { workspaceId, workspaceName: ws.name, contractorUrl, properties, tenants, contractors, tenancies, today };
 }
