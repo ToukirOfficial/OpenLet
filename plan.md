@@ -98,13 +98,13 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 2. Archive ended tenancies; anonymise tenant data N years after end, keeping financial totals; tests.
 3. Delete workspace (Owner, typed confirmation); extra workspaces; `SIGNUP_ENABLED`.
 
-**Phase 10 — Self-hosting, demo and landing page**
+**Phase 10 — Self-hosting, demo and landing page** ✅ done
 1. Dockerfiles + `docker-compose.yml` (web, api, worker, postgres, redis), `.env.example`, clean-machine run.
 2. Demo mode: West Yorkshire fake portfolio seed, one-click landlord/tenant, demo contractor link, mail viewer, 2 MB uploads purged hourly, nightly reset.
 3. Landing page at `/` with screenshots/tour, five journeys, FAQ, demo and GitHub buttons.
 4. README (screenshots, self-hosting, architecture, decisions, tests), `deploy.sh`; walk all 5 journeys on desktop and phone.
 
-**Phase 11 — [V1+] optional (only once every [V1] check passes)**
+**Phase 11 — [V1+] optional (only once every [V1] check passes)** — not built in this session (the brief asked for the [V1] phases)
 1. Property owner contact record for agents.
 2. One-click tenancy renewal.
 3. Inspections with date and reminder; room-by-room report with photos and PDF (added to calendar).
