@@ -96,3 +96,10 @@ The seed also prints a contractor job link for one open repair.
 - Rent reminders: one "due soon" email per charge; overdue emails at each step for the oldest unpaid charge. If the daily run is missed, only the latest step is sent (earlier ones are skipped, not sent in a burst).
 - Certificate, deposit and Right to Rent reminders are grouped into one email per Owner/Manager per day.
 - Certificate reminders also go once on the day after expiry.
+
+## Tenant portal and messages (Phase 7)
+- Tenants see documents shared with them on their tenancies or their own record, plus shared certificates for the home they live in now (not past homes).
+- Tenants never see contractor names, repair costs, internal notes or internal comments.
+- Repairs reported by tenants start as "routine"; staff set the real priority.
+- A tenant message emails everyone in the team; a team message emails every tenant on the tenancy.
+- Tenants can change their phone and emergency contact; name and email changes go through the landlord.

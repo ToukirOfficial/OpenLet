@@ -82,7 +82,7 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 2. Reminder engine: rent due, overdue steps, certificate 60/30/7, deposit protection, Right to Rent; once per item and step, stops when resolved; tests.
 3. Settings for reminder schedules, per-tenancy switch-off, "not legal advice" note across the app.
 
-**Phase 7 — Tenant portal and messages**
+**Phase 7 — Tenant portal and messages** ✅ done
 1. Portal home (rent, next due, balance, open repairs, latest messages), rent history and statement download.
 2. Report a repair with phone camera upload and follow progress; shared documents.
 3. Message threads per tenancy (staff inbox and portal) with email notifications; update own contact details.
