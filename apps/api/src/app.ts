@@ -42,7 +42,7 @@ export async function createApp(options: { logger?: boolean } = {}) {
   app.set('trust proxy', config().TRUST_PROXY);
   app.useBodyParser('json', { limit: '200kb' });
   app.use(securityHeaders, parseCookies, csrf);
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', { exclude: ['api/health'] });
   app.useGlobalPipes(validationPipe);
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();

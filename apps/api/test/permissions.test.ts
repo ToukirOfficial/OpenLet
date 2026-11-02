@@ -12,12 +12,16 @@ afterAll(async () => ctx.app.close());
 function routes(): [string, string][] {
   const express = ctx.app.getHttpAdapter().getInstance() as { router?: { stack: unknown[] }; _router?: { stack: unknown[] } };
   const stack = (express.router ?? express._router)!.stack as { route?: { path: string; methods: Record<string, boolean> } }[];
-  return stack.filter((l) => l.route).flatMap((l) => Object.keys(l.route!.methods).map((m) => [m.toUpperCase(), l.route!.path] as [string, string]));
+  const verbs = new Set(['get', 'post', 'put', 'patch', 'delete']);
+  return stack
+    .filter((l) => l.route)
+    .flatMap((l) => Object.keys(l.route!.methods).filter((m) => verbs.has(m)).map((m) => [m.toUpperCase(), l.route!.path] as [string, string]));
 }
 
 /** Routes anyone may call, by design (project rule 2). */
 const PUBLIC = new Set([
   'GET /api/v1/health',
+  'GET /api/health',
   'GET /api/v1/setup',
   'POST /api/v1/setup',
   'POST /api/v1/auth/signup',
@@ -46,7 +50,8 @@ describe('deny by default', () => {
     expect(all.length).toBeGreaterThan(10);
     for (const [method, path] of all) {
       const key = `${method} ${path}`;
-      if (PUBLIC.has(key)) continue;
+      // Nest lists the prefix-excluded /api/health under every verb; only GET exists (others answer 404).
+      if (PUBLIC.has(key) || (path === '/api/health' && method !== 'GET')) continue;
       const url = path.replace(/:(\w+)/g, '01900000-0000-7000-8000-000000000000');
       const res = await request(ctx.http)[method.toLowerCase() as 'get'](url).send({});
       expect([401, 403], key).toContain(res.status);
@@ -170,5 +175,12 @@ describe('deleting a full workspace', () => {
     expect(res.status).toBe(200);
     expect(await ctx.prisma.tenancy.count({ where: { workspaceId: ws.id } })).toBe(0);
     expect(await ctx.prisma.auditLog.count({ where: { action: 'workspace.deleted', targetId: ws.id } })).toBe(1);
+  });
+});
+
+describe('health', () => {
+  it('answers at /api/v1/health and /api/health', async () => {
+    expect((await request(ctx.http).get('/api/v1/health')).status).toBe(200);
+    expect((await request(ctx.http).get('/api/health')).status).toBe(200);
   });
 });

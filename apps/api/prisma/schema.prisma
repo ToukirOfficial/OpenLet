@@ -1,4 +1,4 @@
-// OpenLet data model (plan.md). Ids are UUIDv7 from PostgreSQL 18. Money is integer pence (GBP).
+// OpenLet data model (plan.md). Ids are UUIDv7, made by Prisma (works on PostgreSQL 16 and later). Money is integer pence (GBP).
 // Calendar dates (due dates, expiry dates) are @db.Date London calendar days; timestamps are UTC.
 
 generator client {
@@ -165,7 +165,7 @@ model InstallState {
 }
 
 model User {
-  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id           String   @id @default(uuid(7)) @db.Uuid
   email        String   @unique
   name         String
   passwordHash String
@@ -181,7 +181,7 @@ model User {
 }
 
 model RefreshToken {
-  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id        String    @id @default(uuid(7)) @db.Uuid
   userId    String    @db.Uuid
   familyId  String    @db.Uuid
   tokenHash String    @unique
@@ -198,7 +198,7 @@ model RefreshToken {
 
 /// 6-digit login codes and password reset tokens, stored only as keyed hashes.
 model AuthCode {
-  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id         String          @id @default(uuid(7)) @db.Uuid
   userId     String          @db.Uuid
   purpose    AuthCodePurpose
   codeHash   String
@@ -215,7 +215,7 @@ model AuthCode {
 
 /// A browser that passed the email code: no code needed there for 30 days.
 model TrustedDevice {
-  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
   userId    String   @db.Uuid
   tokenHash String   @unique
   expiresAt DateTime
@@ -229,7 +229,7 @@ model TrustedDevice {
 // ---------- Workspaces ----------
 
 model Workspace {
-  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id           String   @id @default(uuid(7)) @db.Uuid
   name         String
   contactEmail String?
   contactPhone String?
@@ -260,7 +260,7 @@ model Workspace {
 }
 
 model Membership {
-  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String        @id @default(uuid(7)) @db.Uuid
   workspaceId String        @db.Uuid
   userId      String        @db.Uuid
   role        WorkspaceRole
@@ -274,7 +274,7 @@ model Membership {
 }
 
 model Invite {
-  id          String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String         @id @default(uuid(7)) @db.Uuid
   workspaceId String         @db.Uuid
   kind        InviteKind
   email       String
@@ -298,7 +298,7 @@ model Invite {
 // ---------- Portfolio ----------
 
 model Property {
-  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id           String       @id @default(uuid(7)) @db.Uuid
   workspaceId  String       @db.Uuid
   addressLine1 String
   addressLine2 String?
@@ -326,7 +326,7 @@ model Property {
 }
 
 model Unit {
-  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id         String    @id @default(uuid(7)) @db.Uuid
   propertyId String    @db.Uuid
   name       String
   createdAt  DateTime  @default(now())
@@ -339,7 +339,7 @@ model Unit {
 }
 
 model Tenant {
-  id             String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id             String             @id @default(uuid(7)) @db.Uuid
   workspaceId    String             @db.Uuid
   userId         String?            @db.Uuid
   firstName      String
@@ -368,7 +368,7 @@ model Tenant {
 }
 
 model RightToRentCheck {
-  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id        String    @id @default(uuid(7)) @db.Uuid
   tenantId  String    @db.Uuid
   checkedOn DateTime  @db.Date
   method    RtrMethod
@@ -384,7 +384,7 @@ model RightToRentCheck {
 }
 
 model Contractor {
-  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String    @id @default(uuid(7)) @db.Uuid
   workspaceId String    @db.Uuid
   name        String
   company     String?
@@ -404,7 +404,7 @@ model Contractor {
 // ---------- Tenancies and money ----------
 
 model Tenancy {
-  id               String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id               String          @id @default(uuid(7)) @db.Uuid
   workspaceId      String          @db.Uuid
   unitId           String          @db.Uuid
   startDate        DateTime        @db.Date
@@ -441,7 +441,7 @@ model Tenancy {
 }
 
 model TenancyTenant {
-  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
   tenancyId String   @db.Uuid
   tenantId  String   @db.Uuid
   createdAt DateTime @default(now())
@@ -455,7 +455,7 @@ model TenancyTenant {
 
 /// Rent history. The first row is the starting rent; each later row applies to periods starting on or after effectiveFrom.
 model RentChange {
-  id            String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id            String   @id @default(uuid(7)) @db.Uuid
   tenancyId     String   @db.Uuid
   amountPence   Int
   effectiveFrom DateTime @db.Date
@@ -469,7 +469,7 @@ model RentChange {
 }
 
 model Guarantor {
-  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
   tenancyId String   @db.Uuid
   name      String
   email     String?
@@ -484,7 +484,7 @@ model Guarantor {
 }
 
 model Deposit {
-  id               String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id               String             @id @default(uuid(7)) @db.Uuid
   tenancyId        String             @unique @db.Uuid
   amountPence      Int
   receivedOn       DateTime?          @db.Date
@@ -501,7 +501,7 @@ model Deposit {
 }
 
 model DepositDeduction {
-  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String   @id @default(uuid(7)) @db.Uuid
   depositId   String   @db.Uuid
   reason      String
   amountPence Int
@@ -514,7 +514,7 @@ model DepositDeduction {
 
 /// Append-only. Corrections are a REVERSAL of the original plus a new entry; rows are never updated or deleted.
 model LedgerEntry {
-  id          String         @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String         @id @default(uuid(7)) @db.Uuid
   workspaceId String         @db.Uuid
   tenancyId   String         @db.Uuid
   type        LedgerType
@@ -544,7 +544,7 @@ model LedgerEntry {
 // ---------- Repairs ----------
 
 model Repair {
-  id                 String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id                 String           @id @default(uuid(7)) @db.Uuid
   workspaceId        String           @db.Uuid
   propertyId         String           @db.Uuid
   unitId             String?          @db.Uuid
@@ -584,7 +584,7 @@ model Repair {
 }
 
 model RepairEvent {
-  id         String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id         String          @id @default(uuid(7)) @db.Uuid
   repairId   String          @db.Uuid
   type       RepairEventType
   visibility Visibility      @default(TENANT)
@@ -603,7 +603,7 @@ model RepairEvent {
 
 /// A secure link for one contractor to one repair. Only the SHA-256 hash of the token is stored.
 model ContractorLink {
-  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id           String    @id @default(uuid(7)) @db.Uuid
   repairId     String    @db.Uuid
   contractorId String    @db.Uuid
   tokenHash    String    @unique
@@ -621,7 +621,7 @@ model ContractorLink {
 // ---------- Documents, messages, notes, activity ----------
 
 model Document {
-  id               String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id               String       @id @default(uuid(7)) @db.Uuid
   workspaceId      String       @db.Uuid
   propertyId       String?      @db.Uuid
   tenancyId        String?      @db.Uuid
@@ -658,7 +658,7 @@ model Document {
 }
 
 model Message {
-  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id             String    @id @default(uuid(7)) @db.Uuid
   workspaceId    String    @db.Uuid
   tenancyId      String    @db.Uuid
   authorType     ActorType
@@ -678,7 +678,7 @@ model Message {
 
 /// Internal notes: never shown to tenants.
 model Note {
-  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String    @id @default(uuid(7)) @db.Uuid
   workspaceId String    @db.Uuid
   propertyId  String?   @db.Uuid
   tenancyId   String?   @db.Uuid
@@ -701,7 +701,7 @@ model Note {
 
 /// Who did what and when: record timelines and the dashboard feed. Staff-only.
 model Activity {
-  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String    @id @default(uuid(7)) @db.Uuid
   workspaceId String    @db.Uuid
   actorType   ActorType
   actorId     String?   @db.Uuid
@@ -726,7 +726,7 @@ model Activity {
 /// Sensitive actions (logins, exports, deletions, role changes, downloads). Append-only.
 /// workspaceId is null for account-level events (logins) and kept when a workspace is deleted.
 model AuditLog {
-  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String     @id @default(uuid(7)) @db.Uuid
   workspaceId String?    @db.Uuid
   userId      String?    @db.Uuid
   action      String
@@ -743,7 +743,7 @@ model AuditLog {
 
 /// One row per reminder sent: the unique key makes each item and step go out at most once.
 model ReminderSent {
-  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String    @id @default(uuid(7)) @db.Uuid
   workspaceId String    @db.Uuid
   kind        String
   itemId      String    @db.Uuid
@@ -758,7 +758,7 @@ model ReminderSent {
 
 /// Demo mode only: every email is stored here for the demo mail viewer instead of being sent.
 model OutboundEmail {
-  id          String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String     @id @default(uuid(7)) @db.Uuid
   workspaceId String?    @db.Uuid
   to          String
   subject     String
@@ -774,7 +774,7 @@ model OutboundEmail {
 
 /// Queued PDFs, CSVs and the full data export. The file lives in STORAGE_DIR until it expires.
 model ExportJob {
-  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id            String    @id @default(uuid(7)) @db.Uuid
   workspaceId   String    @db.Uuid
   requestedById String    @db.Uuid
   kind          String

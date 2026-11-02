@@ -11,7 +11,7 @@ Stack per the project rules: Next.js 16.4.4 (16.3.x has critical advisories; app
 4. **Deploy:** I write `deploy.sh` and the notes below; you run it.
 5. **Run commands** are for WSL.
 
-## Data model (Prisma; UUIDv7 via Postgres 18 `uuidv7()`, `createdAt`/`updatedAt` everywhere)
+## Data model (Prisma; UUIDv7 ids made by Prisma with `uuid(7)`, `createdAt`/`updatedAt` everywhere)
 - **Access:** `User` · `RefreshToken` (family, hash, rotatedAt, revokedAt) · `AuthCode` (login/reset, hash, attempts, expiry) · `TrustedDevice` · `InstallState` (setup done) · `Workspace` + `WorkspaceSettings` (reminders, priorities and targets, retention years, required docs, contractor-sees-tenant) · `Membership` (user, workspace, OWNER/MANAGER/STAFF) · `Invite` (team or tenant, token hash, expiry).
 - **Portfolio:** `Property` (UK address, postcode, type, beds, baths, furnished, hasGas) · `Unit` · `Tenant` (optional `userId`, contact, DOB, emergency contact, `anonymisedAt`) · `RightToRentCheck` · `Contractor`.
 - **Tenancy:** `Tenancy` (unit, start, end or periodic, frequency, due day, reminders on/off, notice fields, endedOn, archivedAt) · `TenancyTenant` (joint) · `Guarantor` · `RentChange` (amount pence, effectiveFrom) · `Deposit` · `DepositReturn` + `DepositDeduction`.

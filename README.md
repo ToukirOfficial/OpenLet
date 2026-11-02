@@ -131,7 +131,7 @@ packages/shared  Zod schemas and types shared by both, plus pure rules (dates, m
 - The browser only talks to the web server; it forwards `/api/*` to NestJS, so cookies are first-party.
 - **NestJS decides everything.** A global guard denies every route unless it is marked public, for signed-in users, for tenants, or for specific roles.
 - **Slow work runs on queues** (emails, rent charges, PDFs, CSVs, exports, photo conversion, reminders, retention) in the worker, with scheduled jobs in London time.
-- PostgreSQL 18 (UUIDv7 ids), Redis for queues, rate limits and the dashboard cache.
+- PostgreSQL (16 or later; UUIDv7 ids made by Prisma), Redis for queues, rate limits and the dashboard cache.
 
 ## Hard problems and decisions
 

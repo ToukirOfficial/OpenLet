@@ -5,11 +5,13 @@
 #   ./deploy.sh
 #
 # Steps: check the ports on the server are free (or already this app's) -> build locally from a clean
-# clone of HEAD -> upload a release -> back up the database if migrations are pending, then migrate ->
+# clone of HEAD -> upload a release -> back up the database if migrations are pending, then migrate from
+# here through an SSH tunnel ->
 # switch the "current" link -> restart PM2 -> health check (switches back to the previous release if it fails).
 #
 # Server layout under APP_DIR: releases/<release>/{web,api,ecosystem.config.cjs}, current -> the live
-# release, shared/api.env (the production settings: copy .env.example and fill it in).
+# release, shared/api.env (the production settings: copy .env.example and fill it in). SSH_HOST must log
+# in as the site user, which owns the PM2 processes.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -36,9 +38,14 @@ WORKER_MAX_MEMORY=${WORKER_MAX_MEMORY:-384M}
 
 [ -z "$(git status --porcelain)" ] || { echo "Commit your changes first: the release is built from HEAD."; exit 1; }
 SHA=$(git rev-parse --short HEAD)
-RELEASE="$SHA-$(date -u +%Y%m%d%H%M%S)"
+RELEASE="local-$SHA-$(date -u +%Y%m%d%H%M%S)"
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+TUNNEL_PID=""
+cleanup() {
+  [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 
 echo "==> Checking ports $WEB_PORT and $API_PORT on the server"
 # A port may only be in use by this app's own PM2 process (the release being replaced).
@@ -98,21 +105,26 @@ tar -C "$B" -czf - . | ssh "$SSH_HOST" "set -e; test -f '$APP_DIR/shared/api.env
   mkdir -p '$APP_DIR/releases/$RELEASE' && tar -xzf - -C '$APP_DIR/releases/$RELEASE' && ln -sfn '$APP_DIR/shared/api.env' '$APP_DIR/releases/$RELEASE/api/.env'"
 
 echo "==> Migrations"
-ssh "$SSH_HOST" "bash -s" <<REMOTE
-set -euo pipefail
-cd '$APP_DIR/releases/$RELEASE/api'
-prisma() { node --env-file=.env node_modules/prisma/build/index.js "\$@"; }
-if prisma migrate status >/dev/null 2>&1; then
+# The database is only reachable on the server: run Prisma from here through a short-lived tunnel.
+LPORT=$((55000 + RANDOM % 1000))
+ssh -N -o ExitOnForwardFailure=yes -L "$LPORT:127.0.0.1:5432" "$SSH_HOST" &
+TUNNEL_PID=$!
+sleep 3
+REMOTE_URL=$(ssh "$SSH_HOST" "grep '^DATABASE_URL=' '$APP_DIR/shared/api.env' | cut -d= -f2-")
+LOCAL_URL=$(printf '%s' "$REMOTE_URL" | sed -E "s#@[^/@]+/#@127.0.0.1:$LPORT/#")
+unset REMOTE_URL
+cd apps/api
+if DATABASE_URL="$LOCAL_URL" pnpm exec prisma migrate status >/dev/null 2>&1; then
   echo "    Database is up to date"
 else
   echo "    Pending migrations: backing up the database first"
-  mkdir -p '$BACKUP_DIR' && chmod 700 '$BACKUP_DIR'
-  U=\$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
-  (umask 077; pg_dump -Fc "\$U" -f '$BACKUP_DIR/db-'"\$(date +%Y%m%d-%H%M%S)"'.dump')
-  ls -1t '$BACKUP_DIR'/db-*.dump | tail -n +6 | xargs -r rm -f
-  prisma migrate deploy
+  ssh "$SSH_HOST" "set -e; mkdir -p '$BACKUP_DIR' && chmod 700 '$BACKUP_DIR'; U=\$(grep '^DATABASE_URL=' '$APP_DIR/shared/api.env' | cut -d= -f2-); (umask 077; pg_dump -Fc \"\$U\" -f '$BACKUP_DIR/db-'\$(date +%Y%m%d-%H%M%S).dump); ls -1t '$BACKUP_DIR'/db-*.dump | tail -n +6 | xargs -r rm -f"
+  DATABASE_URL="$LOCAL_URL" pnpm exec prisma migrate deploy
 fi
-REMOTE
+unset LOCAL_URL
+cd "$WORK/src"
+kill "$TUNNEL_PID" 2>/dev/null || true
+TUNNEL_PID=""
 
 echo "==> Switching to the new release"
 PREV=$(ssh "$SSH_HOST" "readlink '$APP_DIR/current' 2>/dev/null || true")
@@ -126,7 +138,7 @@ restart "releases/$RELEASE"
 echo "==> Checking $SITE_URL"
 ok=""
 for _ in $(seq 1 30); do
-  if curl -fsS -o /dev/null "$SITE_URL/" && curl -fsS -o /dev/null "$SITE_URL/api/v1/health"; then ok=1; break; fi
+  if curl -fsS -o /dev/null "$SITE_URL/" && curl -fsS -o /dev/null "$SITE_URL/api/health"; then ok=1; break; fi
   sleep 2
 done
 if [ -z "$ok" ]; then
