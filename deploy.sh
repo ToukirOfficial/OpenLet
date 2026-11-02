@@ -1,95 +1,140 @@
 #!/usr/bin/env bash
-# Deploys OpenLet to the VPS (ssh alias "vps"): build here, upload a release, install production
-# dependencies, dump the database, migrate, switch the "current" symlink, reload PM2, check health.
+# Deploys OpenLet to a server running PM2 behind nginx (no Docker, nothing built on the server).
+# Every server detail comes from deploy.env (git-ignored) and your SSH config: this repo is public.
 #
-# Before the first run, check these against the server (see README "Deploying to a VPS"):
-#   - a site user and folder ($SITE_USER, $APP) with Node 24 from nvm and PM2
-#   - $APP/api.env with the production settings (copy .env.example; DEMO_MODE=true for the demo)
-#   - free ports for $WEB_PORT and $API_PORT, and nginx proxying $DOMAIN to 127.0.0.1:$WEB_PORT
+#   ./deploy.sh
+#
+# Steps: check the ports on the server are free (or already this app's) -> build locally from a clean
+# clone of HEAD -> upload a release -> back up the database if migrations are pending, then migrate ->
+# switch the "current" link -> restart PM2 -> health check (switches back to the previous release if it fails).
+#
+# Server layout under APP_DIR: releases/<release>/{web,api,ecosystem.config.cjs}, current -> the live
+# release, shared/api.env (the production settings: copy .env.example and fill it in).
 set -euo pipefail
-
-DOMAIN=${DOMAIN:-openlet.toukirahmedrony.com}
-SITE_USER=${SITE_USER:-openlet}
-APP=${APP:-/home/$SITE_USER/app}
-WEB_PORT=${WEB_PORT:-3031}
-API_PORT=${API_PORT:-4131}
-REL=$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)
-R=$APP/releases/$REL
-
-# Node: nvm first (Mac and WSL), Homebrew only as a fallback.
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-if [ -s "$NVM_DIR/nvm.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$NVM_DIR/nvm.sh"
-  nvm use 24 >/dev/null 2>&1 || true
-elif [ -x /opt/homebrew/bin/brew ]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
-
 cd "$(dirname "$0")"
 
-echo "==> Build (clean, production settings only)"
-rm -rf apps/web/.next apps/api/dist packages/shared/dist
-env -i HOME="$HOME" PATH="$PATH" NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-  API_INTERNAL_URL="http://127.0.0.1:$API_PORT" \
-  pnpm exec turbo run build --force
+# Node 24 via nvm first (WSL/Linux), Homebrew only as a fallback (macOS).
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.nvm/nvm.sh" && nvm use 24 >/dev/null
+elif [ -x /opt/homebrew/bin/node ]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+fi
 
-echo "==> Package release $REL"
-OUT=$(mktemp -d)
-TGZ=$(mktemp)
-trap 'rm -rf "$OUT" "$TGZ"' EXIT
-mkdir -p "$OUT/web/apps/web/.next" "$OUT/apps/api" "$OUT/apps/web" "$OUT/packages/shared"
-cp -a apps/web/.next/standalone/. "$OUT/web/"
-cp -a apps/web/.next/static "$OUT/web/apps/web/.next/static"
-cp -a apps/web/public "$OUT/web/apps/web/public"
-cp package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs "$OUT/"
-cp apps/web/package.json "$OUT/apps/web/"
-cp -a apps/api/package.json apps/api/prisma.config.ts apps/api/prisma apps/api/dist "$OUT/apps/api/"
-cp -a packages/shared/package.json packages/shared/dist "$OUT/packages/shared/"
-COPYFILE_DISABLE=1 tar -czf "$TGZ" -C "$OUT" .
+[ -f deploy.env ] || { echo "Missing deploy.env. Copy deploy.env.example and fill it in."; exit 1; }
+set -a
+# shellcheck disable=SC1091
+. ./deploy.env
+set +a
+for v in SSH_HOST APP_DIR BACKUP_DIR SITE_URL WEB_PORT API_PORT PM2_PREFIX; do
+  [ -n "${!v:-}" ] || { echo "deploy.env: $v is not set"; exit 1; }
+done
+[ "$WEB_PORT" != "$API_PORT" ] || { echo "deploy.env: WEB_PORT and API_PORT must differ"; exit 1; }
+WEB_MAX_MEMORY=${WEB_MAX_MEMORY:-384M}
+API_MAX_MEMORY=${API_MAX_MEMORY:-384M}
+WORKER_MAX_MEMORY=${WORKER_MAX_MEMORY:-384M}
 
-echo "==> Upload"
-scp -q "$TGZ" "vps:/tmp/openlet-$REL.tgz"
+[ -z "$(git status --porcelain)" ] || { echo "Commit your changes first: the release is built from HEAD."; exit 1; }
+SHA=$(git rev-parse --short HEAD)
+RELEASE="$SHA-$(date -u +%Y%m%d%H%M%S)"
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
 
-echo "==> Install, back up, migrate, switch"
-ssh vps "bash -s" <<REMOTE
+echo "==> Checking ports $WEB_PORT and $API_PORT on the server"
+# A port may only be in use by this app's own PM2 process (the release being replaced).
+ssh "$SSH_HOST" "bash -s" <<REMOTE
 set -euo pipefail
-sudo -u $SITE_USER mkdir -p $R
-sudo -u $SITE_USER tar -xzf /tmp/openlet-$REL.tgz -C $R
-rm -f /tmp/openlet-$REL.tgz
+for pair in web:$WEB_PORT api:$API_PORT; do
+  name=\${pair%%:*}; port=\${pair##*:}
+  if ss -ltnH "sport = :\$port" 2>/dev/null | grep -q .; then
+    pid=\$(ss -ltnpH "sport = :\$port" 2>/dev/null | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2 || true)
+    ours=\$(pm2 pid "$PM2_PREFIX-\$name" 2>/dev/null || true)
+    if [ -z "\$pid" ] || [ -z "\$ours" ] || [ "\$pid" != "\$ours" ]; then
+      echo "Port \$port is already used by another program on the server. Choose a free port in deploy.env." >&2
+      exit 1
+    fi
+  fi
+done
+echo "    Ports are free (or already this app's)"
 REMOTE
 
-ssh vps "cd /tmp && sudo -u $SITE_USER -H bash -s" <<REMOTE
+echo "==> Building $SHA locally"
+git clone -q --no-hardlinks . "$WORK/src"
+git -C "$WORK/src" checkout -q "$SHA"
+cd "$WORK/src"
+export CI=true COREPACK_ENABLE_DOWNLOAD_PROMPT=0 TURBO_FORCE=true NEXT_TELEMETRY_DISABLED=1
+corepack enable >/dev/null 2>&1 || true
+pnpm install --frozen-lockfile --reporter=silent
+# Next.js bakes the /api proxy target into the build.
+NODE_ENV=production API_INTERNAL_URL="http://127.0.0.1:$API_PORT" pnpm build >/dev/null
+grep -q "127.0.0.1:$API_PORT" apps/web/.next/routes-manifest.json || { echo "The web build doesn't proxy to the API port. Stopping."; exit 1; }
+
+echo "==> Bundling"
+B="$WORK/bundle"
+mkdir -p "$B/web/apps/web/.next"
+cp -r apps/web/.next/standalone/. "$B/web/"
+cp -r apps/web/.next/static "$B/web/apps/web/.next/static"
+cp -r apps/web/public "$B/web/apps/web/public"
+pnpm --filter @openlet/api deploy --prod --legacy "$B/api" >/dev/null 2>&1
+{ [ -f "$B/api/dist/main.js" ] && [ -f "$B/api/dist/worker.js" ]; } || { echo "The API bundle is incomplete. Stopping."; exit 1; }
+cat > "$B/ecosystem.config.cjs" <<PM2
+// Generated by deploy.sh from deploy.env. Apps listen on 127.0.0.1 only.
+const path = require('node:path');
+const common = { autorestart: true, max_restarts: 20, restart_delay: 3000, time: true };
+module.exports = {
+  apps: [
+    { ...common, name: '$PM2_PREFIX-web', cwd: path.join(__dirname, 'web'), script: 'apps/web/server.js',
+      env: { NODE_ENV: 'production', PORT: '$WEB_PORT', HOSTNAME: '127.0.0.1' }, max_memory_restart: '$WEB_MAX_MEMORY' },
+    { ...common, name: '$PM2_PREFIX-api', cwd: path.join(__dirname, 'api'), script: 'dist/main.js', node_args: '--env-file=.env',
+      env: { API_PORT: '$API_PORT', API_HOST: '127.0.0.1' }, max_memory_restart: '$API_MAX_MEMORY', kill_timeout: 10000 },
+    { ...common, name: '$PM2_PREFIX-worker', cwd: path.join(__dirname, 'api'), script: 'dist/worker.js', node_args: '--env-file=.env',
+      max_memory_restart: '$WORKER_MAX_MEMORY', kill_timeout: 30000 },
+  ],
+};
+PM2
+
+echo "==> Uploading release $RELEASE"
+tar -C "$B" -czf - . | ssh "$SSH_HOST" "set -e; test -f '$APP_DIR/shared/api.env' || { echo 'Missing shared/api.env on the server' >&2; exit 1; }
+  mkdir -p '$APP_DIR/releases/$RELEASE' && tar -xzf - -C '$APP_DIR/releases/$RELEASE' && ln -sfn '$APP_DIR/shared/api.env' '$APP_DIR/releases/$RELEASE/api/.env'"
+
+echo "==> Migrations"
+ssh "$SSH_HOST" "bash -s" <<REMOTE
 set -euo pipefail
-export NVM_DIR=\$HOME/.nvm
-set +u; . \$NVM_DIR/nvm.sh; nvm use 24 >/dev/null; set -u
-cd $R
-command -v pnpm >/dev/null || npm install -g pnpm@10 >/dev/null
-pnpm install --prod --frozen-lockfile --filter @openlet/api... >/dev/null
-# Database copy before migrating (owner-only, newest kept for a rollback, older than 3 days removed).
-mkdir -p $APP/backups && chmod 700 $APP/backups
-(umask 077; pg_dump "\$(grep ^DATABASE_URL= $APP/api.env | cut -d= -f2-)" | gzip > $APP/backups/db-before-$REL.sql.gz)
-find $APP/backups -maxdepth 1 -type f -name 'db-before-*.sql.gz' -mtime +2 ! -name db-before-$REL.sql.gz -delete
-(cd apps/api && node --env-file=$APP/api.env node_modules/prisma/build/index.js migrate deploy)
-cd $APP
-PREV=\$(readlink current || true)
-ln -sfn $R current.new && mv -Tf current.new current
-OPENLET_APP_DIR=$APP OPENLET_WEB_PORT=$WEB_PORT OPENLET_API_PORT=$API_PORT pm2 startOrReload $R/ecosystem.config.cjs --update-env >/dev/null
-pm2 save >/dev/null
-ok=0
-for i in \$(seq 1 30); do
-  if curl -fs -o /dev/null http://127.0.0.1:$API_PORT/api/v1/health && curl -fs -o /dev/null http://127.0.0.1:$WEB_PORT/; then ok=1; break; fi
+cd '$APP_DIR/releases/$RELEASE/api'
+prisma() { node --env-file=.env node_modules/prisma/build/index.js "\$@"; }
+if prisma migrate status >/dev/null 2>&1; then
+  echo "    Database is up to date"
+else
+  echo "    Pending migrations: backing up the database first"
+  mkdir -p '$BACKUP_DIR' && chmod 700 '$BACKUP_DIR'
+  U=\$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
+  (umask 077; pg_dump -Fc "\$U" -f '$BACKUP_DIR/db-'"\$(date +%Y%m%d-%H%M%S)"'.dump')
+  ls -1t '$BACKUP_DIR'/db-*.dump | tail -n +6 | xargs -r rm -f
+  prisma migrate deploy
+fi
+REMOTE
+
+echo "==> Switching to the new release"
+PREV=$(ssh "$SSH_HOST" "readlink '$APP_DIR/current' 2>/dev/null || true")
+restart() {
+  ssh "$SSH_HOST" "set -e; cd '$APP_DIR'; ln -sfn '$1' current.new && mv -T current.new current
+    pm2 delete current/ecosystem.config.cjs >/dev/null 2>&1 || true
+    pm2 start current/ecosystem.config.cjs >/dev/null && pm2 save >/dev/null"
+}
+restart "releases/$RELEASE"
+
+echo "==> Checking $SITE_URL"
+ok=""
+for _ in $(seq 1 30); do
+  if curl -fsS -o /dev/null "$SITE_URL/" && curl -fsS -o /dev/null "$SITE_URL/api/v1/health"; then ok=1; break; fi
   sleep 2
 done
-if [ \$ok != 1 ]; then
-  echo "Health check failed, rolling back to \$PREV" >&2
-  if [ -n "\$PREV" ]; then ln -sfn "\$PREV" current.new && mv -Tf current.new current; pm2 reload openlet-api openlet-worker openlet-web --update-env >/dev/null; fi
+if [ -z "$ok" ]; then
+  echo "Health check failed."
+  if [ -n "$PREV" ]; then echo "Switching back to $PREV"; restart "$PREV"; fi
   exit 1
 fi
-ls -1dt $APP/releases/* | tail -n +3 | xargs -r rm -rf
-REMOTE
 
-code=$(curl -s -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
-health=$(curl -s -o /dev/null -w '%{http_code}' "https://$DOMAIN/api/v1/health")
-echo "==> https://$DOMAIN/ $code, /api/v1/health $health"
-[ "$code" = 200 ] && [ "$health" = 200 ]
+# Keep the live release and the one before it.
+ssh "$SSH_HOST" "cd '$APP_DIR/releases' && ls -1t | grep -vxF '$RELEASE' | grep -vxF '$(basename "${PREV:-none}")' | xargs -r rm -rf"
+echo "==> Deployed $SHA to $SITE_URL"

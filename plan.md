@@ -117,4 +117,4 @@ Auth · Setup · Workspaces (members, invites, settings) · Properties (+units) 
 - **Same origin:** serve the API under `/api` on the same domain as the web app so `SameSite` cookies work; HTTPS required (`Secure` cookies).
 - **Env:** `DATABASE_URL`, `REDIS_URL` (+db), `JWT_*` secrets, `SMTP_*`, `APP_URL`, `SIGNUP_ENABLED=false`, `DEMO_MODE` (true on the demo site), `CONTRACTOR_LINK_GRACE_DAYS`, `UPLOAD_MAX_MB`.
 - **Migrations:** `prisma migrate deploy` on each release; dump the DB first. Native deps: sharp (bundled libvips), argon2.
-- **Live ports suggestion:** web 3031 / API 4131 (next free after slotwise 3030/4130); check on the VPS first.
+- **Server settings** (SSH alias, folders, site address, ports, PM2 names) live in the git-ignored `deploy.env`; `deploy.sh` checks the ports are free on the server before deploying.
