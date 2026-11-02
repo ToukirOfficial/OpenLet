@@ -13,6 +13,8 @@ import { MailService } from '../mail/mail.service.js';
 import { email } from '../mail/templates.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { createWorkspace } from './create-workspace.js';
+import { StorageService } from '../files/storage.service.js';
+import { StreamableFile } from '@nestjs/common';
 
 export const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -23,6 +25,7 @@ export class WorkspacesService {
     private readonly activity: ActivityService,
     private readonly mail: MailService,
     private readonly limits: RateLimitService,
+    private readonly storage: StorageService,
   ) {}
 
   /** An Owner can add more workspaces; anyone can when sign-up is open. Never in the demo. */
@@ -65,10 +68,34 @@ export class WorkspacesService {
     if (confirmName.trim() !== ws.name.trim()) {
       throw new BadRequestException({ code: 'CONFIRM_MISMATCH', message: 'Type the workspace name exactly to confirm.', field: 'confirmName' });
     }
+    const files = await this.prisma.document.findMany({ where: { workspaceId: ws.id }, select: { storageKey: true } });
+    const exportsFiles = await this.prisma.exportJob.findMany({ where: { workspaceId: ws.id, storageKey: { not: null } }, select: { storageKey: true } });
     // The audit row survives the delete (its workspaceId becomes null).
     await this.activity.audit({ workspaceId: ws.id, userId: ctx.userId, action: 'workspace.deleted', targetType: 'workspace', targetId: ws.id, ip: ctx.ip });
     await this.prisma.workspace.delete({ where: { id: ws.id } });
+    const keys = [...files.map((f) => f.storageKey), ...exportsFiles.map((f) => f.storageKey!), ...(ws.logoKey ? [ws.logoKey] : [])];
+    await Promise.all(keys.map((k) => this.storage.remove(k)));
     return { ok: true };
+  }
+
+  /** PNG or JPEG, re-encoded (metadata stripped). Replaces the old logo. */
+  async setLogo(ctx: StaffContext, file: Express.Multer.File | undefined) {
+    const stored = await this.storage.saveUpload(file, { imagesOnly: true });
+    if (stored.needsConversion) {
+      await this.storage.remove(stored.key);
+      throw new BadRequestException({ code: 'BAD_TYPE', message: 'Upload the logo as a PNG or JPEG.' });
+    }
+    const ws = await this.prisma.workspace.findUniqueOrThrow({ where: { id: ctx.workspaceId }, select: { logoKey: true } });
+    await this.prisma.workspace.update({ where: { id: ctx.workspaceId }, data: { logoKey: stored.key, logoMime: stored.mime } });
+    if (ws.logoKey) await this.storage.remove(ws.logoKey);
+    return { ok: true };
+  }
+
+  /** Logos are public branding (shown on emails, PDFs and the portal), served by workspace id. */
+  async logo(workspaceId: string) {
+    const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { logoKey: true, logoMime: true } });
+    if (!ws?.logoKey) throw new NotFoundException({ message: 'No logo.' });
+    return new StreamableFile(await this.storage.stream(ws.logoKey), { type: ws.logoMime ?? 'image/png' });
   }
 
   // ---------- Team ----------

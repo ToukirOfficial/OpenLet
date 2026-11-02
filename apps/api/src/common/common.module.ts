@@ -6,8 +6,9 @@ import { RateLimitService } from './rate-limit.service.js';
 import { QueueService } from '../jobs/queue.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { ContractorLinksService } from '../repairs/contractor-links.service.js';
+import { StorageService } from '../files/storage.service.js';
 
-const shared = [PrismaService, RedisService, ActivityService, RateLimitService, QueueService, MailService, ContractorLinksService];
+const shared = [PrismaService, RedisService, ActivityService, RateLimitService, QueueService, MailService, ContractorLinksService, StorageService];
 
 @Global()
 @Module({ providers: shared, exports: shared })

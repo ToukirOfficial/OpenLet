@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { MailService, type MailJob } from '../mail/mail.service.js';
+import { DocumentsService } from '../documents/documents.service.js';
 
 /**
  * Runs every queued job by name. The worker process calls this; tests call it directly with the jobs
@@ -10,12 +11,17 @@ import { MailService, type MailJob } from '../mail/mail.service.js';
 export class JobProcessors {
   private readonly logger = new Logger('Jobs');
 
-  constructor(private readonly mail: MailService) {}
+  constructor(
+    private readonly mail: MailService,
+    private readonly documents: DocumentsService,
+  ) {}
 
   async run(queue: string, job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
     switch (`${queue}:${job.name}`) {
       case 'mail:send':
         return this.mail.deliver(job.data as MailJob);
+      case 'work:convert-heic':
+        return this.documents.convertHeic((job.data as { documentId: string }).documentId);
       default:
         this.logger.warn(`No processor for ${queue}:${job.name}`);
         return undefined;

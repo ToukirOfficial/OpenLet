@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import type { z } from 'zod';
 import { createWorkspaceSchema, deleteWorkspaceSchema, idParam, inviteMemberSchema, listQuery, updateMemberSchema, workspaceSettingsSchema } from '@openlet/shared';
 import type { StaffContext, UserContext } from '../common/auth-context.js';
-import { ALL_STAFF, CurrentUser, MANAGERS, Roles, SignedIn, Staff } from '../common/decorators.js';
+import { ALL_STAFF, CurrentUser, MANAGERS, Public, Roles, SignedIn, Staff } from '../common/decorators.js';
+import { uploadInterceptor } from '../documents/documents.controller.js';
 import { WorkspacesService } from './workspaces.service.js';
 
 @Controller()
@@ -25,6 +26,20 @@ export class WorkspacesController {
   @Patch('workspace/settings')
   settings(@Staff() ctx: StaffContext, @Body({ schema: workspaceSettingsSchema }) body: z.infer<typeof workspaceSettingsSchema>) {
     return this.workspaces.updateSettings(ctx, body);
+  }
+
+  @Roles(...MANAGERS)
+  @Post('workspace/logo')
+  @HttpCode(200)
+  @UseInterceptors(uploadInterceptor())
+  setLogo(@Staff() ctx: StaffContext, @UploadedFile() file: Express.Multer.File | undefined) {
+    return this.workspaces.setLogo(ctx, file);
+  }
+
+  @Public()
+  @Get('workspace-logo/:id')
+  logo(@Param({ schema: idParam }) p: z.infer<typeof idParam>) {
+    return this.workspaces.logo(p.id);
   }
 
   @Roles('OWNER')
