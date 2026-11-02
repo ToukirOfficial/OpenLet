@@ -67,7 +67,7 @@ CREATE TABLE "InstallState" (
 
 -- CreateTable
 CREATE TABLE "User" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE "User" (
 
 -- CreateTable
 CREATE TABLE "RefreshToken" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
     "familyId" UUID NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE "RefreshToken" (
 
 -- CreateTable
 CREATE TABLE "AuthCode" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
     "purpose" "AuthCodePurpose" NOT NULL,
     "codeHash" TEXT NOT NULL,
@@ -110,7 +110,7 @@ CREATE TABLE "AuthCode" (
 
 -- CreateTable
 CREATE TABLE "TrustedDevice" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
     "tokenHash" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
@@ -122,7 +122,7 @@ CREATE TABLE "TrustedDevice" (
 
 -- CreateTable
 CREATE TABLE "Workspace" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "contactEmail" TEXT,
     "contactPhone" TEXT,
@@ -138,7 +138,7 @@ CREATE TABLE "Workspace" (
 
 -- CreateTable
 CREATE TABLE "Membership" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "userId" UUID NOT NULL,
     "role" "WorkspaceRole" NOT NULL,
@@ -150,7 +150,7 @@ CREATE TABLE "Membership" (
 
 -- CreateTable
 CREATE TABLE "Invite" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "kind" "InviteKind" NOT NULL,
     "email" TEXT NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE "Invite" (
 
 -- CreateTable
 CREATE TABLE "Property" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "addressLine1" TEXT NOT NULL,
     "addressLine2" TEXT,
@@ -192,7 +192,7 @@ CREATE TABLE "Property" (
 
 -- CreateTable
 CREATE TABLE "Unit" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "propertyId" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -203,7 +203,7 @@ CREATE TABLE "Unit" (
 
 -- CreateTable
 CREATE TABLE "Tenant" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "userId" UUID,
     "firstName" TEXT NOT NULL,
@@ -223,7 +223,7 @@ CREATE TABLE "Tenant" (
 
 -- CreateTable
 CREATE TABLE "RightToRentCheck" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "tenantId" UUID NOT NULL,
     "checkedOn" DATE NOT NULL,
     "method" "RtrMethod" NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE "RightToRentCheck" (
 
 -- CreateTable
 CREATE TABLE "Contractor" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "company" TEXT,
@@ -254,7 +254,7 @@ CREATE TABLE "Contractor" (
 
 -- CreateTable
 CREATE TABLE "Tenancy" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "unitId" UUID NOT NULL,
     "startDate" DATE NOT NULL,
@@ -276,7 +276,7 @@ CREATE TABLE "Tenancy" (
 
 -- CreateTable
 CREATE TABLE "TenancyTenant" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "tenantId" UUID NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -287,7 +287,7 @@ CREATE TABLE "TenancyTenant" (
 
 -- CreateTable
 CREATE TABLE "RentChange" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "amountPence" INTEGER NOT NULL,
     "effectiveFrom" DATE NOT NULL,
@@ -300,7 +300,7 @@ CREATE TABLE "RentChange" (
 
 -- CreateTable
 CREATE TABLE "Guarantor" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT,
@@ -315,7 +315,7 @@ CREATE TABLE "Guarantor" (
 
 -- CreateTable
 CREATE TABLE "Deposit" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "amountPence" INTEGER NOT NULL,
     "receivedOn" DATE,
@@ -333,7 +333,7 @@ CREATE TABLE "Deposit" (
 
 -- CreateTable
 CREATE TABLE "DepositDeduction" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "depositId" UUID NOT NULL,
     "reason" TEXT NOT NULL,
     "amountPence" INTEGER NOT NULL,
@@ -345,7 +345,7 @@ CREATE TABLE "DepositDeduction" (
 
 -- CreateTable
 CREATE TABLE "LedgerEntry" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "type" "LedgerType" NOT NULL,
@@ -366,7 +366,7 @@ CREATE TABLE "LedgerEntry" (
 
 -- CreateTable
 CREATE TABLE "Repair" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "propertyId" UUID NOT NULL,
     "unitId" UUID,
@@ -394,7 +394,7 @@ CREATE TABLE "Repair" (
 
 -- CreateTable
 CREATE TABLE "RepairEvent" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "repairId" UUID NOT NULL,
     "type" "RepairEventType" NOT NULL,
     "visibility" "Visibility" NOT NULL DEFAULT 'TENANT',
@@ -412,7 +412,7 @@ CREATE TABLE "RepairEvent" (
 
 -- CreateTable
 CREATE TABLE "ContractorLink" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "repairId" UUID NOT NULL,
     "contractorId" UUID NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -427,7 +427,7 @@ CREATE TABLE "ContractorLink" (
 
 -- CreateTable
 CREATE TABLE "Document" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "propertyId" UUID,
     "tenancyId" UUID,
@@ -453,7 +453,7 @@ CREATE TABLE "Document" (
 
 -- CreateTable
 CREATE TABLE "Message" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "tenancyId" UUID NOT NULL,
     "authorType" "ActorType" NOT NULL,
@@ -470,7 +470,7 @@ CREATE TABLE "Message" (
 
 -- CreateTable
 CREATE TABLE "Note" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "propertyId" UUID,
     "tenancyId" UUID,
@@ -486,7 +486,7 @@ CREATE TABLE "Note" (
 
 -- CreateTable
 CREATE TABLE "Activity" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "actorType" "ActorType" NOT NULL,
     "actorId" UUID,
@@ -505,7 +505,7 @@ CREATE TABLE "Activity" (
 
 -- CreateTable
 CREATE TABLE "AuditLog" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID,
     "userId" UUID,
     "action" TEXT NOT NULL,
@@ -520,7 +520,7 @@ CREATE TABLE "AuditLog" (
 
 -- CreateTable
 CREATE TABLE "ReminderSent" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "kind" TEXT NOT NULL,
     "itemId" UUID NOT NULL,
@@ -533,7 +533,7 @@ CREATE TABLE "ReminderSent" (
 
 -- CreateTable
 CREATE TABLE "OutboundEmail" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID,
     "to" TEXT NOT NULL,
     "subject" TEXT NOT NULL,
@@ -547,7 +547,7 @@ CREATE TABLE "OutboundEmail" (
 
 -- CreateTable
 CREATE TABLE "ExportJob" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
+    "id" UUID NOT NULL,
     "workspaceId" UUID NOT NULL,
     "requestedById" UUID NOT NULL,
     "kind" TEXT NOT NULL,
@@ -826,13 +826,13 @@ ALTER TABLE "Contractor" ADD CONSTRAINT "Contractor_workspaceId_fkey" FOREIGN KE
 ALTER TABLE "Tenancy" ADD CONSTRAINT "Tenancy_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Tenancy" ADD CONSTRAINT "Tenancy_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "Unit"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Tenancy" ADD CONSTRAINT "Tenancy_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "Unit"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "TenancyTenant" ADD CONSTRAINT "TenancyTenant_tenancyId_fkey" FOREIGN KEY ("tenancyId") REFERENCES "Tenancy"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TenancyTenant" ADD CONSTRAINT "TenancyTenant_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TenancyTenant" ADD CONSTRAINT "TenancyTenant_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RentChange" ADD CONSTRAINT "RentChange_tenancyId_fkey" FOREIGN KEY ("tenancyId") REFERENCES "Tenancy"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -853,7 +853,7 @@ ALTER TABLE "LedgerEntry" ADD CONSTRAINT "LedgerEntry_workspaceId_fkey" FOREIGN 
 ALTER TABLE "LedgerEntry" ADD CONSTRAINT "LedgerEntry_tenancyId_fkey" FOREIGN KEY ("tenancyId") REFERENCES "Tenancy"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "LedgerEntry" ADD CONSTRAINT "LedgerEntry_reversesId_fkey" FOREIGN KEY ("reversesId") REFERENCES "LedgerEntry"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "LedgerEntry" ADD CONSTRAINT "LedgerEntry_reversesId_fkey" FOREIGN KEY ("reversesId") REFERENCES "LedgerEntry"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Repair" ADD CONSTRAINT "Repair_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
