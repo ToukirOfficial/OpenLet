@@ -322,3 +322,78 @@ export interface JobInfo {
   fileName: string | null;
   error: string | null;
 }
+
+// ---------- Repairs ----------
+export interface RepairListItem {
+  id: string;
+  reference: number;
+  title: string;
+  category: 'HEATING' | 'PLUMBING' | 'ELECTRICAL' | 'DAMP_MOULD' | 'APPLIANCES' | 'SECURITY' | 'OTHER';
+  priority: 'EMERGENCY' | 'URGENT' | 'ROUTINE';
+  status: 'REPORTED' | 'ACKNOWLEDGED' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED' | 'CANCELLED';
+  propertyId: string;
+  address: string;
+  unitName: string | null;
+  tenancyId: string | null;
+  contractorName: string | null;
+  reportedBy: 'STAFF' | 'TENANT';
+  targetAt: string;
+  overdue: boolean;
+  visitAt: string | null;
+  costPence: number | null;
+  createdAt: string;
+}
+
+export interface RepairEventItem {
+  id: string;
+  type: 'CREATED' | 'STATUS' | 'COMMENT' | 'ASSIGNED' | 'VISIT' | 'COST' | 'PHOTO';
+  visibility: 'TENANT' | 'INTERNAL';
+  actorType: 'STAFF' | 'TENANT' | 'CONTRACTOR' | 'SYSTEM';
+  actorName: string | null;
+  fromStatus: RepairListItem['status'] | null;
+  toStatus: RepairListItem['status'] | null;
+  body: string | null;
+  createdAt: string;
+}
+
+export interface RepairPhoto {
+  id: string;
+  uploadedBy: 'STAFF' | 'TENANT' | 'CONTRACTOR' | 'SYSTEM';
+  ready: boolean;
+  createdAt: string;
+}
+
+export interface RepairDetail extends RepairListItem {
+  description: string;
+  accessNotes: string | null;
+  availability: string | null;
+  contractorId: string | null;
+  tenants: { name: string; phone: string | null; email: string | null }[];
+  events: RepairEventItem[];
+  photos: RepairPhoto[];
+  link: { active: boolean; expiresAt: string | null; lastUsedAt: string | null } | null;
+  completedAt: string | null;
+  closedAt: string | null;
+}
+
+/** What a contractor sees on their job page. No other repair, tenant or landlord data. */
+export interface ContractorJob {
+  reference: number;
+  workspaceName: string;
+  workspaceContact: string | null;
+  title: string;
+  category: RepairListItem['category'];
+  priority: RepairListItem['priority'];
+  status: RepairListItem['status'];
+  description: string;
+  accessNotes: string | null;
+  availability: string | null;
+  address: string;
+  unitName: string | null;
+  tenant: { names: string; phone: string | null } | null;
+  visitAt: string | null;
+  costPence: number | null;
+  canUpdate: boolean;
+  updates: { body: string | null; toStatus: RepairListItem['status'] | null; type: RepairEventItem['type']; createdAt: string }[];
+  photos: { id: string; ready: boolean }[];
+}

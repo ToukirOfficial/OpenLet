@@ -156,3 +156,19 @@ describe('CSRF', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('deleting a full workspace', () => {
+  it('removes a workspace that has tenancies, a ledger and repairs', async () => {
+    const { ws, owner } = await workspaceWithTeam(ctx.prisma);
+    const c = await as(ctx, owner.id, ws.id);
+    const p = (await c.post('/properties', { addressLine1: '1 Gone Road', town: 'Leeds', postcode: 'LS1 1AA', type: 'HOUSE', bedrooms: 1, bathrooms: 1, furnished: 'UNFURNISHED', hasGas: false })).body;
+    const t = (await c.post('/tenants', { firstName: 'A', lastName: 'B' })).body;
+    const tenancy = (await c.post('/tenancies', { unitId: p.units[0].id, tenantIds: [t.id], startDate: '2026-01-01', rentPence: 50000, frequency: 'MONTHLY', dueDay: 1 })).body;
+    await c.post('/payments', { tenancyId: tenancy.id, date: '2026-01-02', amountPence: 50000, method: 'CASH' });
+    await c.post('/repairs', { propertyId: p.id, category: 'OTHER', title: 'x', description: 'y', priority: 'ROUTINE' });
+    const res = await c.post('/workspace/delete', { confirmName: ws.name });
+    expect(res.status).toBe(200);
+    expect(await ctx.prisma.tenancy.count({ where: { workspaceId: ws.id } })).toBe(0);
+    expect(await ctx.prisma.auditLog.count({ where: { action: 'workspace.deleted', targetId: ws.id } })).toBe(1);
+  });
+});

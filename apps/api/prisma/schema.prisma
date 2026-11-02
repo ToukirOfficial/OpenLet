@@ -424,7 +424,7 @@ model Tenancy {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  unit             Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  unit             Unit            @relation(fields: [unitId], references: [id], onDelete: Cascade)
   tenants          TenancyTenant[]
   rentChanges      RentChange[]
   guarantors       Guarantor[]
@@ -447,7 +447,7 @@ model TenancyTenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tenancy   Tenancy  @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenancyId, tenantId])
   @@index([tenantId])
@@ -533,7 +533,7 @@ model LedgerEntry {
   updatedAt   DateTime       @updatedAt
   workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   tenancy     Tenancy        @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
-  reverses    LedgerEntry?   @relation("Reversal", fields: [reversesId], references: [id], onDelete: Restrict)
+  reverses    LedgerEntry?   @relation("Reversal", fields: [reversesId], references: [id], onDelete: Cascade)
   reversedBy  LedgerEntry?   @relation("Reversal")
 
   @@unique([tenancyId, type, periodStart])

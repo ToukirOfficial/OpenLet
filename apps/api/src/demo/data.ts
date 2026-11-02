@@ -55,3 +55,16 @@ export const CONTRACTORS = [
   { key: 'spark', name: 'Owen Firth', company: 'Firth Electrical', trade: 'Electrician', phone: '07700 900203' },
   { key: 'handy', name: 'Bill Crowther', company: null, trade: 'Handyman', phone: '07700 900204' },
 ] as const;
+
+/** Repairs in every status. `daysAgo` = when reported. */
+export const REPAIRS = [
+  { property: 'calder', unit: 0, tenancy: 'calder:0:tom', category: 'HEATING', title: 'Boiler not working', description: 'No heating or hot water since this morning. The boiler shows error F28.', priority: 'URGENT', status: 'SCHEDULED', contractor: 'gas', daysAgo: 1, byTenant: true, visitInDays: 1, accessNotes: 'Tenant home after 9am. Dog is friendly.', link: true },
+  { property: 'mill', unit: 1, tenancy: 'mill:1:ellie', category: 'DAMP_MOULD', title: 'Black mould on bedroom wall', description: 'Patch of mould near the window in the back bedroom, getting bigger.', priority: 'ROUTINE', status: 'REPORTED', contractor: null, daysAgo: 2, byTenant: true },
+  { property: 'weavers', unit: 0, tenancy: 'weavers:0:kasia', category: 'PLUMBING', title: 'Shower leaking into kitchen ceiling', description: 'Water coming through the kitchen ceiling when the upstairs shower runs.', priority: 'URGENT', status: 'IN_PROGRESS', contractor: 'plumb', daysAgo: 4, byTenant: false, visitInDays: -1 },
+  { property: 'station', unit: 0, tenancy: 'station:0:george', category: 'ELECTRICAL', title: 'Hallway light fitting sparking', description: 'The hall light flickers and sparked when switched on. Tenant has turned it off at the switch.', priority: 'EMERGENCY', status: 'ACKNOWLEDGED', contractor: 'spark', daysAgo: 2, byTenant: true },
+  { property: 'beacon', unit: 0, tenancy: 'beacon:0:amira', category: 'APPLIANCES', title: 'Bathroom extractor fan not working', description: 'Fan makes no noise when the light is on.', priority: 'ROUTINE', status: 'COMPLETED', contractor: 'spark', daysAgo: 12, byTenant: true, cost: 8500 },
+  { property: 'moorside', unit: 0, tenancy: 'moorside:0:mei', category: 'SECURITY', title: 'Front door lock sticking', description: 'Key is hard to turn in the front door.', priority: 'ROUTINE', status: 'CLOSED', contractor: 'handy', daysAgo: 30, byTenant: true, cost: 6000 },
+  { property: 'weavers', unit: 4, tenancy: 'weavers:4:jack', category: 'APPLIANCES', title: 'Washing machine not draining', description: 'Turned out to be a blocked filter, cleared by the tenant.', priority: 'ROUTINE', status: 'CANCELLED', contractor: null, daysAgo: 9, byTenant: true },
+  { property: 'canal', unit: 0, tenancy: null, category: 'HEATING', title: 'Bedroom radiator cold', description: 'Radiator needed bleeding and a new valve.', priority: 'ROUTINE', status: 'CLOSED', contractor: 'gas', daysAgo: 130, byTenant: false, cost: 12000 },
+  { property: 'chapel', unit: 0, tenancy: null, category: 'OTHER', title: 'Clear gutters before winter', description: 'Front and back gutters full of leaves.', priority: 'ROUTINE', status: 'CLOSED', contractor: 'handy', daysAgo: 60, byTenant: false, cost: 9500 },
+] as const;

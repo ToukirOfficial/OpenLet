@@ -13,9 +13,10 @@ import { NotesModule } from './notes/notes.module.js';
 import { LedgerModule } from './ledger/ledger.module.js';
 import { TenanciesModule } from './tenancies/tenancies.module.js';
 import { ExportsModule } from './exports/exports.module.js';
+import { RepairsModule } from './repairs/repairs.module.js';
 
 @Module({
-  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule],
+  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

@@ -4,7 +4,9 @@ import { DEFAULT_SETTINGS } from '../common/settings.js';
 import { toDb } from '../common/dates.js';
 import { rentPeriods } from '../ledger/schedule.js';
 import { CHARGE_AHEAD_DAYS } from '../ledger/ledger.service.js';
-import { CONTRACTORS, PROPERTIES, TENANCIES, TENANTS } from './data.js';
+import { CONTRACTORS, PROPERTIES, REPAIRS, TENANCIES, TENANTS } from './data.js';
+import { randomToken, sha256 } from '../common/crypto.js';
+import { config } from '../config.js';
 
 const monthsFromToday = (today: IsoDate, n: number, day: number) => {
   const { y, m } = parseIsoDate(today);
@@ -128,5 +130,70 @@ export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' 
     }
   }
 
-  return { workspaceId, workspaceName: ws.name, contractorUrl: null as string | null, properties, tenants, contractors, tenancies, today };
+  // Repairs in every status, with their history.
+  let contractorUrl: string | null = null;
+  const targets = DEFAULT_SETTINGS.targetHours;
+  for (const [i, def] of REPAIRS.entries()) {
+    const created = new Date(Date.now() - def.daysAgo * 86_400_000 - 3 * 3600_000);
+    const at = (h: number) => new Date(created.getTime() + h * 3600_000);
+    const tenancyId = def.tenancy ? tenancies[def.tenancy]! : null;
+    const link = def.byTenant && tenancyId ? await prisma.tenancyTenant.findFirst({ where: { tenancyId }, include: { tenant: true } }) : null;
+    const contractor = def.contractor ? contractors[def.contractor]! : null;
+    const contractorName = def.contractor ? CONTRACTORS.find((c) => c.key === def.contractor)!.name : '';
+    const closed = def.status === 'CLOSED' || def.status === 'CANCELLED';
+    const r = await prisma.repair.create({
+      data: {
+        workspaceId,
+        propertyId: properties[def.property]!.id,
+        unitId: properties[def.property]!.units[def.unit]!.id,
+        tenancyId,
+        reportedByTenantId: link?.tenantId ?? null,
+        reference: i + 1,
+        category: def.category,
+        title: def.title,
+        description: def.description,
+        accessNotes: 'accessNotes' in def ? def.accessNotes : null,
+        priority: def.priority,
+        status: def.status,
+        targetAt: at(targets[def.priority]),
+        visitAt: 'visitInDays' in def ? new Date(Date.now() + def.visitInDays * 86_400_000 + 4 * 3600_000) : null,
+        costPence: 'cost' in def ? def.cost : null,
+        contractorId: contractor?.id ?? null,
+        completedAt: ['COMPLETED', 'CLOSED'].includes(def.status) ? at(30) : null,
+        closedAt: closed ? at(48) : null,
+        createdAt: created,
+      },
+    });
+    type St = 'REPORTED' | 'ACKNOWLEDGED' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED' | 'CANCELLED';
+    const flow: St[] = ['ACKNOWLEDGED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED'];
+    const reached = def.status === 'CANCELLED' || def.status === 'REPORTED' ? [] : flow.slice(0, flow.indexOf(def.status) + 1);
+    const staffName = 'Sana Iqbal';
+    const events: { type: 'CREATED' | 'STATUS' | 'ASSIGNED' | 'COMMENT'; actorType: 'STAFF' | 'TENANT' | 'CONTRACTOR'; actorName: string; toStatus?: St; body?: string; visibility?: 'TENANT' | 'INTERNAL'; createdAt: Date }[] = [
+      { type: 'CREATED', actorType: link ? 'TENANT' : 'STAFF', actorName: link ? `${link.tenant.firstName} ${link.tenant.lastName}` : staffName, toStatus: 'REPORTED', createdAt: created },
+    ];
+    reached.forEach((st, n) => {
+      if (st === 'ACKNOWLEDGED' && contractor) events.push({ type: 'ASSIGNED', actorType: 'STAFF', actorName: staffName, body: `Assigned to ${contractorName}.`, createdAt: at(1) });
+      const byContractor = !!contractor && (st === 'SCHEDULED' || st === 'IN_PROGRESS' || st === 'COMPLETED');
+      events.push({ type: 'STATUS', actorType: byContractor ? 'CONTRACTOR' : 'STAFF', actorName: byContractor ? contractorName : staffName, toStatus: st, createdAt: at(2 + n * 6) });
+    });
+    if (def.status === 'CANCELLED') events.push({ type: 'STATUS', actorType: 'STAFF', actorName: staffName, toStatus: 'CANCELLED', body: 'Tenant says it’s sorted now.', createdAt: at(20) });
+    if (def.priority !== 'ROUTINE') events.push({ type: 'COMMENT', actorType: 'STAFF', actorName: staffName, body: 'Landlord approved up to £300 without asking.', visibility: 'INTERNAL', createdAt: at(1.5) });
+    events.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    let prev: St | null = null;
+    for (const e of events) {
+      await prisma.repairEvent.create({
+        data: { repairId: r.id, type: e.type, actorType: e.actorType, actorName: e.actorName, fromStatus: e.type === 'STATUS' ? prev : null, toStatus: e.toStatus ?? null, body: e.body ?? null, visibility: e.visibility ?? 'TENANT', createdAt: e.createdAt },
+      });
+      if (e.toStatus) prev = e.toStatus;
+    }
+    if (contractor && def.status !== 'CANCELLED') {
+      const token = randomToken(32);
+      await prisma.contractorLink.create({
+        data: { repairId: r.id, contractorId: contractor.id, tokenHash: sha256(token), expiresAt: closed ? new Date(at(48).getTime() + 7 * 86_400_000) : null },
+      });
+      if ('link' in def && def.link) contractorUrl = `${config().APP_URL}/job/${token}`;
+    }
+  }
+
+  return { workspaceId, workspaceName: ws.name, contractorUrl, properties, tenants, contractors, tenancies, today };
 }
