@@ -486,3 +486,69 @@ export interface PortalDetails {
   emergencyName: string | null;
   emergencyPhone: string | null;
 }
+
+// ---------- Dashboard, calendar, reports ----------
+export interface AttentionItem {
+  kind: 'ARREARS' | 'REPAIR_OVERDUE' | 'REPAIR_NEW' | 'CERT_EXPIRED' | 'CERT_EXPIRING' | 'CERT_MISSING' | 'DEPOSIT' | 'RIGHT_TO_RENT' | 'ENDING';
+  severity: 'bad' | 'warn';
+  title: string;
+  detail: string;
+  href: string;
+}
+
+export interface Dashboard {
+  stats: {
+    rentDueThisWeekPence: number;
+    rentDueThisWeekCount: number;
+    overduePence: number;
+    overdueCount: number;
+    openRepairs: number;
+    overdueRepairs: number;
+    certificatesExpiring: number;
+    certificatesExpired: number;
+    certificatesMissing: number;
+    endingSoon: number;
+    vacantUnits: number;
+    totalUnits: number;
+  };
+  attention: AttentionItem[];
+  /** Rent received per month, last 6 months, for the small chart. */
+  income: { month: string; pence: number }[];
+}
+
+export interface CalendarEvent {
+  date: string;
+  kind: 'RENT_DUE' | 'REPAIR_VISIT' | 'CERT_EXPIRY' | 'TENANCY_START' | 'TENANCY_END';
+  title: string;
+  detail: string;
+  href: string;
+  /** Visits only: the time, as an ISO timestamp. */
+  at?: string;
+}
+
+export interface RentRollRow {
+  tenancyId: string;
+  address: string;
+  tenantNames: string;
+  status: string;
+  rentPence: number;
+  frequency: string;
+  startDate: string;
+  endDate: string | null;
+  balancePence: number;
+}
+
+export interface IncomeReport {
+  months: string[];
+  rows: { propertyId: string; address: string; byMonth: number[]; totalPence: number }[];
+  totals: number[];
+  totalPence: number;
+}
+
+export interface MaintenanceRow {
+  propertyId: string;
+  address: string;
+  repairs: number;
+  costPence: number;
+  items: { reference: number; title: string; date: string; costPence: number; contractor: string | null }[];
+}
