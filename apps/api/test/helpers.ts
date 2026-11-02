@@ -93,3 +93,31 @@ export const clearOutbox = () => {
   MailService.outbox.length = 0;
   QueueService.testJobs.length = 0;
 };
+
+export const PROPERTY = {
+  addressLine1: '12 Example Terrace',
+  town: 'Halifax',
+  postcode: 'hx1 1aa',
+  type: 'HOUSE',
+  bedrooms: 3,
+  bathrooms: 1,
+  furnished: 'UNFURNISHED',
+  hasGas: true,
+};
+
+export async function createProperty(prisma: PrismaService, workspaceId: string, units = ['Whole property']) {
+  return prisma.property.create({
+    data: {
+      workspaceId,
+      addressLine1: `${Math.floor(Math.random() * 200) + 1} Test Street`,
+      town: 'Leeds',
+      postcode: 'LS1 1AA',
+      type: 'HOUSE',
+      bedrooms: 2,
+      bathrooms: 1,
+      furnished: 'UNFURNISHED',
+      units: { create: units.map((name) => ({ name })) },
+    },
+    include: { units: true },
+  });
+}

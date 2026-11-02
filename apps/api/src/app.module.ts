@@ -5,9 +5,14 @@ import { CommonModule } from './common/common.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { WorkspacesModule } from './workspaces/workspaces.module.js';
 import { HealthController } from './health/health.controller.js';
+import { PropertiesModule } from './properties/properties.module.js';
+import { TenantsModule } from './tenants/tenants.module.js';
+import { ContractorsModule } from './contractors/contractors.module.js';
+import { DocumentsModule } from './documents/documents.module.js';
+import { NotesModule } from './notes/notes.module.js';
 
 @Module({
-  imports: [CommonModule, AuthModule, WorkspacesModule],
+  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

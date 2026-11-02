@@ -1,9 +1,10 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { DEFAULT_SETTINGS } from '../common/settings.js';
+import { CONTRACTORS, PROPERTIES, TENANTS } from './data.js';
 
 type U = { id: string; email: string; name: string };
 
-/** The fake West Yorkshire portfolio. Grows phase by phase (plan.md). */
+/** The fake West Yorkshire portfolio. */
 export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' | 'manager' | 'staff' | 'tenant', U>) {
   const ws = await prisma.workspace.create({
     data: {
@@ -21,8 +22,33 @@ export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' 
       },
     },
   });
-  await prisma.tenant.create({
-    data: { workspaceId: ws.id, userId: users.tenant.id, firstName: 'Tom', lastName: 'Ashworth', email: users.tenant.email, phone: '07700 900123' },
-  });
-  return { workspaceId: ws.id, workspaceName: ws.name, contractorUrl: null as string | null };
+  const workspaceId = ws.id;
+
+  const properties: Record<string, { id: string; units: { id: string; name: string }[] }> = {};
+  for (const { key, units, ...p } of PROPERTIES) {
+    properties[key] = await prisma.property.create({
+      data: { ...p, workspaceId, units: { create: units.map((name) => ({ name })) } },
+      include: { units: { orderBy: { createdAt: 'asc' } } },
+    });
+  }
+
+  const tenants: Record<string, { id: string }> = {};
+  for (const { key, ...t } of TENANTS) {
+    const isPortalUser = key === 'tom';
+    tenants[key] = await prisma.tenant.create({
+      data: {
+        ...t,
+        workspaceId,
+        email: isPortalUser ? users.tenant.email : `${t.firstName.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}.${t.lastName.toLowerCase()}@tenant.example`,
+        userId: isPortalUser ? users.tenant.id : null,
+      },
+    });
+  }
+
+  const contractors: Record<string, { id: string }> = {};
+  for (const { key, ...c } of CONTRACTORS) {
+    contractors[key] = await prisma.contractor.create({ data: { ...c, workspaceId, email: `${key}@trades.example` } });
+  }
+
+  return { workspaceId, workspaceName: ws.name, contractorUrl: null as string | null, properties, tenants, contractors };
 }
