@@ -7,6 +7,7 @@ import { CommonModule } from './common/common.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { LedgerModule } from './ledger/ledger.module.js';
+import { ExportsModule } from './exports/exports.module.js';
 import { JobProcessors } from './jobs/processors.js';
 import { QUEUES, QueueService } from './jobs/queue.service.js';
 import { RedisService } from './redis.service.js';
@@ -14,9 +15,10 @@ import { RedisService } from './redis.service.js';
 /** Scheduled jobs, in London time (plan.md deploy notes). */
 const SCHEDULES: { id: string; pattern: string; demoOnly?: boolean }[] = [
   { id: 'rent-charges', pattern: '0 2 * * *' },
+  { id: 'purge-exports', pattern: '15 * * * *' },
 ];
 
-@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, JobsModule] })
+@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, ExportsModule, JobsModule] })
 class WorkerModule {}
 
 const logger = new Logger('Worker');

@@ -3,6 +3,7 @@ import type { Job } from 'bullmq';
 import { MailService, type MailJob } from '../mail/mail.service.js';
 import { DocumentsService } from '../documents/documents.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
+import { ExportsService } from '../exports/exports.service.js';
 
 /**
  * Runs every queued job by name. The worker process calls this; tests call it directly with the jobs
@@ -16,6 +17,7 @@ export class JobProcessors {
     private readonly mail: MailService,
     private readonly documents: DocumentsService,
     private readonly ledger: LedgerService,
+    private readonly exports: ExportsService,
   ) {}
 
   async run(queue: string, job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
@@ -28,6 +30,10 @@ export class JobProcessors {
         return this.ledger.generateFor((job.data as { tenancyId: string }).tenancyId);
       case 'schedule:rent-charges':
         return this.ledger.generateAll();
+      case 'work:export':
+        return this.exports.run((job.data as { jobId: string }).jobId);
+      case 'schedule:purge-exports':
+        return this.exports.purgeExpired();
       default:
         this.logger.warn(`No processor for ${queue}:${job.name}`);
         return undefined;

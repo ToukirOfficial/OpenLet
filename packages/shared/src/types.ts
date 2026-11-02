@@ -272,3 +272,53 @@ export interface PropertyOption {
   address: string;
   units: { id: string; name: string; tenancy: { id: string; status: string; tenantNames: string; endDate: string | null } | null }[];
 }
+
+// ---------- Ledger ----------
+export interface LedgerRow {
+  id: string;
+  type: 'RENT_CHARGE' | 'OTHER_CHARGE' | 'PAYMENT' | 'CREDIT' | 'REVERSAL';
+  date: string;
+  description: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  method: 'BANK_TRANSFER' | 'STANDING_ORDER' | 'CASH' | 'CARD' | 'OTHER' | null;
+  reference: string | null;
+  /** Positive for charges, negative for money in. */
+  signedPence: number;
+  amountPence: number;
+  runningBalancePence: number;
+  /** Charges only. */
+  status: 'PAID' | 'PART_PAID' | 'UNPAID' | 'UPCOMING' | null;
+  outstandingPence: number | null;
+  reversed: boolean;
+  reversesId: string | null;
+  createdBy: string | null;
+}
+
+export interface Ledger {
+  tenancyId: string;
+  rows: LedgerRow[];
+  balancePence: number;
+  arrearsPence: number;
+  daysOverdue: number;
+  creditPence: number;
+  nextDueDate: string | null;
+}
+
+export interface ArrearsItem {
+  tenancyId: string;
+  tenantNames: string;
+  address: string;
+  arrearsPence: number;
+  daysOverdue: number;
+  oldestUnpaidDue: string;
+  lastPayment: string | null;
+  remindersEnabled: boolean;
+}
+
+export interface JobInfo {
+  id: string;
+  status: 'PENDING' | 'READY' | 'FAILED';
+  fileName: string | null;
+  error: string | null;
+}
