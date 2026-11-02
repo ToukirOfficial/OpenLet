@@ -88,8 +88,10 @@ export class AuthService {
       await this.activity.audit({ userId: user?.id ?? null, action: 'login.failed', ip: meta.ip });
       throw invalidLogin();
     }
-    // Demo accounts and trusted browsers skip the code.
-    if (user.isDemo || (await this.sessions.isTrusted(user.id, meta.deviceToken))) {
+    // Trusted browsers skip the code. So do the seeded demo accounts, but only on the demo site or in local
+    // development: on a real install they'd need a code sent to an address nobody can read.
+    const demoSkip = user.isDemo && (config().DEMO_MODE || config().NODE_ENV !== 'production');
+    if (demoSkip || (await this.sessions.isTrusted(user.id, meta.deviceToken))) {
       await this.completeLogin(user.id, meta, false);
       return { status: 'ok' };
     }

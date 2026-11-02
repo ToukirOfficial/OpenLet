@@ -7,7 +7,7 @@ import { CHARGE_AHEAD_DAYS } from '../ledger/ledger.service.js';
 import { CERTIFICATES, CONTRACTORS, PROPERTIES, REPAIRS, TENANCIES, TENANTS } from './data.js';
 import { demoPdf, storeDemoFile } from './files.js';
 import { DOCUMENT_TYPE_LABELS, formatDate } from '@openlet/shared';
-import { randomToken, sha256 } from '../common/crypto.js';
+import { demoLinkToken, randomToken, sha256 } from '../common/crypto.js';
 import { config } from '../config.js';
 
 const monthsFromToday = (today: IsoDate, n: number, day: number) => {
@@ -189,7 +189,7 @@ export async function seedPortfolio(prisma: PrismaClient, users: Record<'owner' 
       if (e.toStatus) prev = e.toStatus;
     }
     if (contractor && def.status !== 'CANCELLED') {
-      const token = randomToken(32);
+      const token = 'link' in def && def.link ? demoLinkToken(r.id) : randomToken(32);
       await prisma.contractorLink.create({
         data: { repairId: r.id, contractorId: contractor.id, tokenHash: sha256(token), expiresAt: closed ? new Date(at(48).getTime() + 7 * 86_400_000) : null },
       });

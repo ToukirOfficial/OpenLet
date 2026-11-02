@@ -6,6 +6,7 @@ import { LedgerService } from '../ledger/ledger.service.js';
 import { ExportsService } from '../exports/exports.service.js';
 import { RemindersService } from '../reminders/reminders.service.js';
 import { RetentionService } from '../retention/retention.service.js';
+import { DemoService } from '../demo/demo.service.js';
 
 /**
  * Runs every queued job by name. The worker process calls this; tests call it directly with the jobs
@@ -22,6 +23,7 @@ export class JobProcessors {
     private readonly exports: ExportsService,
     private readonly reminders: RemindersService,
     private readonly retention: RetentionService,
+    private readonly demo: DemoService,
   ) {}
 
   async run(queue: string, job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
@@ -42,6 +44,10 @@ export class JobProcessors {
         return this.reminders.runDaily();
       case 'schedule:retention':
         return this.retention.run();
+      case 'schedule:demo-reset':
+        return this.demo.reset();
+      case 'schedule:demo-purge':
+        return this.demo.purgeUploads();
       default:
         this.logger.warn(`No processor for ${queue}:${job.name}`);
         return undefined;

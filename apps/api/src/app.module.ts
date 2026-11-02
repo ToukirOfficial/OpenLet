@@ -21,9 +21,10 @@ import { PortalModule } from './portal/portal.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { RetentionModule } from './retention/retention.module.js';
+import { DemoModule } from './demo/demo.module.js';
 
 @Module({
-  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule, ComplianceModule, RemindersModule, MessagesModule, PortalModule, DashboardModule, ReportsModule, RetentionModule],
+  imports: [CommonModule, AuthModule, WorkspacesModule, DocumentsModule, PropertiesModule, TenantsModule, ContractorsModule, NotesModule, LedgerModule, ExportsModule, TenanciesModule, RepairsModule, ComplianceModule, RemindersModule, MessagesModule, PortalModule, DashboardModule, ReportsModule, RetentionModule, DemoModule],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })

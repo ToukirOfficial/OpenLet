@@ -372,6 +372,7 @@ export interface RepairDetail extends RepairListItem {
   events: RepairEventItem[];
   photos: RepairPhoto[];
   link: { active: boolean; expiresAt: string | null; lastUsedAt: string | null } | null;
+  demoUrl: string | null;
   completedAt: string | null;
   closedAt: string | null;
 }

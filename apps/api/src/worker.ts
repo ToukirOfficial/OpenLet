@@ -12,6 +12,7 @@ import { ComplianceModule } from './compliance/compliance.module.js';
 import { RemindersModule } from './reminders/reminders.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { RetentionModule } from './retention/retention.module.js';
+import { DemoModule } from './demo/demo.module.js';
 import { JobProcessors } from './jobs/processors.js';
 import { QUEUES, QueueService } from './jobs/queue.service.js';
 import { RedisService } from './redis.service.js';
@@ -22,9 +23,11 @@ const SCHEDULES: { id: string; pattern: string; demoOnly?: boolean }[] = [
   { id: 'purge-exports', pattern: '15 * * * *' },
   { id: 'reminders', pattern: '0 8 * * *' },
   { id: 'retention', pattern: '30 3 * * *' },
+  { id: 'demo-reset', pattern: '0 3 * * *', demoOnly: true },
+  { id: 'demo-purge', pattern: '45 * * * *', demoOnly: true },
 ];
 
-@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, ExportsModule, ComplianceModule, RemindersModule, ReportsModule, RetentionModule, JobsModule] })
+@Module({ imports: [CommonModule, DocumentsModule, LedgerModule, ExportsModule, ComplianceModule, RemindersModule, ReportsModule, RetentionModule, DemoModule, JobsModule] })
 class WorkerModule {}
 
 const logger = new Logger('Worker');
@@ -43,7 +46,8 @@ const workers = Object.values(QUEUES).map(
       concurrency: name === 'mail' ? 4 : 2,
     }),
 );
-for (const w of workers) w.on('failed', (job, err) => logger.error(`${w.name}:${job?.name} failed: ${err.message}`));
+// Only the job name and error type: messages can contain email addresses (SMTP) or other personal data.
+for (const w of workers) w.on('failed', (job, err) => logger.error(`${w.name}:${job?.name} failed (${err.name}, attempt ${job?.attemptsMade ?? '?'})`));
 
 const schedule = queues.queue('schedule');
 for (const s of SCHEDULES) {

@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module.js';
+import { config } from './config.js';
 import { parseCookies } from './common/cookies.js';
 import { csrf } from './common/csrf.js';
 import { AllExceptionsFilter } from './common/http-exception.filter.js';
@@ -37,8 +38,8 @@ export async function createApp(options: { logger?: boolean } = {}) {
     abortOnError: false,
   });
   app.disable('x-powered-by');
-  // Requests arrive through Next.js (and nginx in production) on the same machine.
-  app.set('trust proxy', 'loopback');
+  // Requests arrive through Next.js (and nginx in production); only those proxies are trusted for the client IP.
+  app.set('trust proxy', config().TRUST_PROXY);
   app.useBodyParser('json', { limit: '200kb' });
   app.use(securityHeaders, parseCookies, csrf);
   app.setGlobalPrefix('api/v1');

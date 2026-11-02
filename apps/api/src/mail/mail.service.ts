@@ -27,7 +27,9 @@ export class MailService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async send(job: MailJob) {
+  async send(input: MailJob) {
+    // Subjects include user-typed text (repair titles, names): never let it break the header.
+    const job = { ...input, subject: input.subject.replace(/[\r\n]+/g, ' ').slice(0, 200) };
     if (config().NODE_ENV === 'test') {
       MailService.outbox.push(job);
       return;

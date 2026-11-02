@@ -40,8 +40,12 @@ export async function seed(prisma: PrismaClient) {
   return seedPortfolio(prisma, users);
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}`;
+const isMain = process.argv[1]?.endsWith('seed.js') ?? false;
 if (isMain) {
+  if (config().NODE_ENV === 'production' && !config().DEMO_MODE) {
+    console.error('Refusing to seed: this is a production install without DEMO_MODE=true. The seed creates logins with a published password.');
+    process.exit(1);
+  }
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: config().DATABASE_URL }) });
   const result = await seed(prisma);
   console.log(`Seeded workspace "${result.workspaceName}". Password for every seed login: ${SEED_PASSWORD}`);

@@ -63,3 +63,6 @@ export function verifyPayload<T extends Record<string, unknown>>(token: string):
     return null;
   }
 }
+
+/** Demo only: the seeded contractor link's token, derived from the server secret so the demo can show it. */
+export const demoLinkToken = (repairId: string) => createHmac('sha256', config().JWT_SECRET).update(`demo-link:${repairId}`).digest('base64url');

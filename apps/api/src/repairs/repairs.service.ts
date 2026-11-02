@@ -30,6 +30,7 @@ import { RedisService } from '../redis.service.js';
 import { formatAddress } from '../properties/properties.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { ContractorLinksService } from './contractor-links.service.js';
+import { demoLinkToken, sha256 } from '../common/crypto.js';
 
 export const repairInclude = {
   property: true,
@@ -89,6 +90,8 @@ export class RepairsService {
       events: r.events.map((e) => ({ id: e.id, type: e.type, visibility: e.visibility, actorType: e.actorType, actorName: e.actorName, fromStatus: e.fromStatus, toStatus: e.toStatus, body: e.body, createdAt: e.createdAt.toISOString() })),
       photos: r.documents.map((d) => ({ id: d.id, uploadedBy: d.uploadedByType, ready: d.ready, createdAt: d.createdAt.toISOString() })),
       link: link ? { active: !link.expiresAt || link.expiresAt > new Date(), expiresAt: link.expiresAt?.toISOString() ?? null, lastUsedAt: link.lastUsedAt?.toISOString() ?? null } : null,
+      // Demo site only: the seeded job link, so visitors can see the contractor's page.
+      demoUrl: config().DEMO_MODE && link && link.tokenHash === sha256(demoLinkToken(r.id)) ? `${config().APP_URL}/job/${demoLinkToken(r.id)}` : null,
       completedAt: r.completedAt?.toISOString() ?? null,
       closedAt: r.closedAt?.toISOString() ?? null,
     };
