@@ -1,27 +1,37 @@
 #!/usr/bin/env bash
-# Deploys OpenLet to a server running PM2 behind nginx (no Docker, nothing built on the server).
+# Deploys OpenLet to a server running PM2 behind nginx (no Docker).
 # Every server detail comes from deploy.env (git-ignored) and your SSH config: this repo is public.
 #
-#   ./deploy.sh
+#   ./deploy.sh          deploy the pushed HEAD
+#   ./deploy.sh --seed   also load the demo data after switching (only when DEMO_MODE=true on the server)
 #
-# Steps: check the ports on the server are free (or already this app's) -> build locally from a clean
-# clone of HEAD -> upload a release -> back up the database if migrations are pending, then migrate from
-# here through an SSH tunnel ->
-# switch the "current" link -> restart PM2 -> health check (switches back to the previous release if it fails).
+# The release is built ON the server from a clean clone of the GitHub repo, so native packages
+# (argon2, sharp, Prisma engines) match the server's CPU (e.g. ARM). Steps: check HEAD is committed and
+# pushed -> clone + build on the server -> bundle a release -> back up the database if migrations are
+# pending, then migrate -> switch the "current" link -> restart PM2 -> health check on the server's own
+# ports (switches back to the previous release if it fails) -> check the public URL.
 #
 # Server layout under APP_DIR: releases/<release>/{web,api,ecosystem.config.cjs}, current -> the live
 # release, shared/api.env (the production settings: copy .env.example and fill it in). SSH_HOST must log
-# in as the site user, which owns the PM2 processes.
+# in as the user that owns the PM2 processes. The server needs git, Node 24, pnpm, PM2 and pg_dump.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Node 24 via nvm first (WSL/Linux), Homebrew only as a fallback (macOS).
+# Node 24 via nvm first (WSL/Linux), Homebrew only as a fallback (macOS). Only git and ssh are used locally.
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
   # shellcheck disable=SC1091
-  . "$HOME/.nvm/nvm.sh" && nvm use 24 >/dev/null
+  . "$HOME/.nvm/nvm.sh" && nvm use 24 >/dev/null 2>&1 || true
 elif [ -x /opt/homebrew/bin/node ]; then
   export PATH="/opt/homebrew/bin:$PATH"
 fi
+
+SEED=0
+for a in "$@"; do
+  case "$a" in
+    --seed) SEED=1 ;;
+    *) echo "Unknown option: $a" >&2; exit 1 ;;
+  esac
+done
 
 [ -f deploy.env ] || { echo "Missing deploy.env. Copy deploy.env.example and fill it in."; exit 1; }
 set -a
@@ -32,59 +42,50 @@ for v in SSH_HOST APP_DIR BACKUP_DIR SITE_URL WEB_PORT API_PORT PM2_PREFIX; do
   [ -n "${!v:-}" ] || { echo "deploy.env: $v is not set"; exit 1; }
 done
 [ "$WEB_PORT" != "$API_PORT" ] || { echo "deploy.env: WEB_PORT and API_PORT must differ"; exit 1; }
-WEB_MAX_MEMORY=${WEB_MAX_MEMORY:-384M}
-API_MAX_MEMORY=${API_MAX_MEMORY:-384M}
-WORKER_MAX_MEMORY=${WORKER_MAX_MEMORY:-384M}
+WEB_MAX_MEMORY=${WEB_MAX_MEMORY:-300M}
+API_MAX_MEMORY=${API_MAX_MEMORY:-300M}
+WORKER_MAX_MEMORY=${WORKER_MAX_MEMORY:-350M}
+BRANCH=${BRANCH:-main}
+# Public clone URL of this repo (the server needs no GitHub key).
+REPO_URL=${REPO_URL:-$(git remote get-url origin | sed -E 's#^git@github.com:#https://github.com/#')}
 
 [ -z "$(git status --porcelain)" ] || { echo "Commit your changes first: the release is built from HEAD."; exit 1; }
-SHA=$(git rev-parse --short HEAD)
-RELEASE="local-$SHA-$(date -u +%Y%m%d%H%M%S)"
-WORK=$(mktemp -d)
-TUNNEL_PID=""
-cleanup() {
-  [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true
-  rm -rf "$WORK"
-}
-trap cleanup EXIT
+git fetch -q origin "$BRANCH"
+SHA=$(git rev-parse HEAD)
+[ "$SHA" = "$(git rev-parse "origin/$BRANCH")" ] || { echo "HEAD is not origin/$BRANCH: push first (the server clones from GitHub)."; exit 1; }
+RELEASE="git-${SHA:0:7}-$(date -u +%Y%m%d%H%M%S)"
 
-echo "==> Checking ports $WEB_PORT and $API_PORT on the server"
-# A port may only be in use by this app's own PM2 process (the release being replaced).
-ssh "$SSH_HOST" "bash -s" <<REMOTE
+echo "==> Building ${SHA:0:7} on the server"
+# shellcheck disable=SC2087
+ssh "$SSH_HOST" "bash -s" -- "$APP_DIR" "$BACKUP_DIR" "$RELEASE" "$REPO_URL" "$BRANCH" "$SHA" "$WEB_PORT" "$API_PORT" \
+  "$PM2_PREFIX" "$WEB_MAX_MEMORY" "$API_MAX_MEMORY" "$WORKER_MAX_MEMORY" "$SEED" <<'REMOTE'
 set -euo pipefail
-for pair in web:$WEB_PORT api:$API_PORT; do
-  name=\${pair%%:*}; port=\${pair##*:}
-  if ss -ltnH "sport = :\$port" 2>/dev/null | grep -q .; then
-    pid=\$(ss -ltnpH "sport = :\$port" 2>/dev/null | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2 || true)
-    ours=\$(pm2 pid "$PM2_PREFIX-\$name" 2>/dev/null || true)
-    if [ -z "\$pid" ] || [ -z "\$ours" ] || [ "\$pid" != "\$ours" ]; then
-      echo "Port \$port is already used by another program on the server. Choose a free port in deploy.env." >&2
-      exit 1
-    fi
-  fi
-done
-echo "    Ports are free (or already this app's)"
-REMOTE
-
-echo "==> Building $SHA locally"
-git clone -q --no-hardlinks . "$WORK/src"
-git -C "$WORK/src" checkout -q "$SHA"
-cd "$WORK/src"
+APP_DIR=$1 BACKUP_DIR=$2 RELEASE=$3 REPO_URL=$4 BRANCH=$5 SHA=$6 WEB_PORT=$7 API_PORT=$8
+PM2_PREFIX=$9 WEB_MAX_MEMORY=${10} API_MAX_MEMORY=${11} WORKER_MAX_MEMORY=${12} SEED=${13}
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null
+test -f "$APP_DIR/shared/api.env" || { echo "Missing $APP_DIR/shared/api.env on the server" >&2; exit 1; }
+SRC="$APP_DIR/build-src"
+R="$APP_DIR/releases/$RELEASE"
+trap 'rm -rf "$SRC"' EXIT
+rm -rf "$SRC"
+git clone -q --branch "$BRANCH" "$REPO_URL" "$SRC"
+git -C "$SRC" checkout -q "$SHA"
+cd "$SRC"
 export CI=true COREPACK_ENABLE_DOWNLOAD_PROMPT=0 TURBO_FORCE=true NEXT_TELEMETRY_DISABLED=1
-corepack enable >/dev/null 2>&1 || true
 pnpm install --frozen-lockfile --reporter=silent
 # Next.js bakes the /api proxy target into the build.
 NODE_ENV=production API_INTERNAL_URL="http://127.0.0.1:$API_PORT" pnpm build >/dev/null
 grep -q "127.0.0.1:$API_PORT" apps/web/.next/routes-manifest.json || { echo "The web build doesn't proxy to the API port. Stopping."; exit 1; }
 
-echo "==> Bundling"
-B="$WORK/bundle"
-mkdir -p "$B/web/apps/web/.next"
-cp -r apps/web/.next/standalone/. "$B/web/"
-cp -r apps/web/.next/static "$B/web/apps/web/.next/static"
-cp -r apps/web/public "$B/web/apps/web/public"
-pnpm --filter @openlet/api deploy --prod --legacy "$B/api" >/dev/null 2>&1
-{ [ -f "$B/api/dist/main.js" ] && [ -f "$B/api/dist/worker.js" ]; } || { echo "The API bundle is incomplete. Stopping."; exit 1; }
-cat > "$B/ecosystem.config.cjs" <<PM2
+echo "==> Bundling release $RELEASE"
+mkdir -p "$R/web/apps/web/.next"
+cp -r apps/web/.next/standalone/. "$R/web/"
+cp -r apps/web/.next/static "$R/web/apps/web/.next/static"
+cp -r apps/web/public "$R/web/apps/web/public"
+pnpm --filter @openlet/api deploy --prod --legacy "$R/api" >/dev/null 2>&1
+{ [ -f "$R/api/dist/main.js" ] && [ -f "$R/api/dist/worker.js" ]; } || { echo "The API bundle is incomplete. Stopping."; rm -rf "$R"; exit 1; }
+ln -sfn "$APP_DIR/shared/api.env" "$R/api/.env"
+cat > "$R/ecosystem.config.cjs" <<PM2
 // Generated by deploy.sh from deploy.env. Apps listen on 127.0.0.1 only.
 const path = require('node:path');
 const common = { autorestart: true, max_restarts: 20, restart_delay: 3000, time: true };
@@ -100,45 +101,40 @@ module.exports = {
 };
 PM2
 
-echo "==> Uploading release $RELEASE"
-tar -C "$B" -czf - . | ssh "$SSH_HOST" "set -e; test -f '$APP_DIR/shared/api.env' || { echo 'Missing shared/api.env on the server' >&2; exit 1; }
-  mkdir -p '$APP_DIR/releases/$RELEASE' && tar -xzf - -C '$APP_DIR/releases/$RELEASE' && ln -sfn '$APP_DIR/shared/api.env' '$APP_DIR/releases/$RELEASE/api/.env'"
-
 echo "==> Migrations"
-# The database is only reachable on the server: run Prisma from here through a short-lived tunnel.
-LPORT=$((55000 + RANDOM % 1000))
-ssh -N -o ExitOnForwardFailure=yes -L "$LPORT:127.0.0.1:5432" "$SSH_HOST" &
-TUNNEL_PID=$!
-sleep 3
-REMOTE_URL=$(ssh "$SSH_HOST" "grep '^DATABASE_URL=' '$APP_DIR/shared/api.env' | cut -d= -f2-")
-LOCAL_URL=$(printf '%s' "$REMOTE_URL" | sed -E "s#@[^/@]+/#@127.0.0.1:$LPORT/#")
-unset REMOTE_URL
-cd apps/api
-if DATABASE_URL="$LOCAL_URL" pnpm exec prisma migrate status >/dev/null 2>&1; then
+DATABASE_URL=$(grep '^DATABASE_URL=' "$APP_DIR/shared/api.env" | cut -d= -f2-)
+export DATABASE_URL
+cd "$SRC/apps/api"
+if pnpm exec prisma migrate status >/dev/null 2>&1; then
   echo "    Database is up to date"
 else
   echo "    Pending migrations: backing up the database first"
-  ssh "$SSH_HOST" "set -e; mkdir -p '$BACKUP_DIR' && chmod 700 '$BACKUP_DIR'; U=\$(grep '^DATABASE_URL=' '$APP_DIR/shared/api.env' | cut -d= -f2-); (umask 077; pg_dump -Fc \"\$U\" -f '$BACKUP_DIR/db-'\$(date +%Y%m%d-%H%M%S).dump); ls -1t '$BACKUP_DIR'/db-*.dump | tail -n +6 | xargs -r rm -f"
-  DATABASE_URL="$LOCAL_URL" pnpm exec prisma migrate deploy
+  mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
+  (umask 077; pg_dump -Fc "$DATABASE_URL" -f "$BACKUP_DIR/db-$(date +%Y%m%d-%H%M%S).dump")
+  ls -1t "$BACKUP_DIR"/db-*.dump | tail -n +6 | xargs -r rm -f
+  pnpm exec prisma migrate deploy
 fi
-unset LOCAL_URL
-cd "$WORK/src"
-kill "$TUNNEL_PID" 2>/dev/null || true
-TUNNEL_PID=""
+unset DATABASE_URL
 
 echo "==> Switching to the new release"
-PREV=$(ssh "$SSH_HOST" "readlink '$APP_DIR/current' 2>/dev/null || true")
+cd "$APP_DIR"
+PREV=$(readlink current 2>/dev/null || true)
 restart() {
-  ssh "$SSH_HOST" "set -e; cd '$APP_DIR'; ln -sfn '$1' current.new && mv -T current.new current
-    pm2 delete current/ecosystem.config.cjs >/dev/null 2>&1 || true
-    pm2 start current/ecosystem.config.cjs >/dev/null && pm2 save >/dev/null"
+  ln -sfn "$1" current.new && mv -T current.new current
+  pm2 delete current/ecosystem.config.cjs >/dev/null 2>&1 || true
+  pm2 start current/ecosystem.config.cjs >/dev/null && pm2 save >/dev/null
 }
 restart "releases/$RELEASE"
+if [ "$SEED" = 1 ]; then
+  grep -q '^DEMO_MODE=true' shared/api.env || { echo "--seed is only allowed when DEMO_MODE=true" >&2; exit 1; }
+  echo "==> Loading demo data"
+  (cd current/api && node --env-file=.env dist/seed.js)
+fi
 
-echo "==> Checking $SITE_URL"
+echo "==> Health check"
 ok=""
 for _ in $(seq 1 30); do
-  if curl -fsS -o /dev/null "$SITE_URL/" && curl -fsS -o /dev/null "$SITE_URL/api/health"; then ok=1; break; fi
+  if curl -fsS -o /dev/null "http://127.0.0.1:$WEB_PORT/" && curl -fsS -o /dev/null "http://127.0.0.1:$API_PORT/api/health"; then ok=1; break; fi
   sleep 2
 done
 if [ -z "$ok" ]; then
@@ -146,7 +142,13 @@ if [ -z "$ok" ]; then
   if [ -n "$PREV" ]; then echo "Switching back to $PREV"; restart "$PREV"; fi
   exit 1
 fi
-
 # Keep the live release and the one before it.
-ssh "$SSH_HOST" "cd '$APP_DIR/releases' && ls -1t | grep -vxF '$RELEASE' | grep -vxF '$(basename "${PREV:-none}")' | xargs -r rm -rf"
-echo "==> Deployed $SHA to $SITE_URL"
+cd releases && ls -1t | grep -vxF "$RELEASE" | grep -vxF "$(basename "${PREV:-none}")" | xargs -r rm -rf
+REMOTE
+
+echo "==> Checking $SITE_URL"
+if curl -fsS -o /dev/null -m 20 "$SITE_URL/" && curl -fsS -o /dev/null -m 20 "$SITE_URL/api/health"; then
+  echo "==> Deployed ${SHA:0:7} to $SITE_URL"
+else
+  echo "==> Deployed ${SHA:0:7}; the server is healthy but $SITE_URL did not answer 200 (DNS or TLS not pointing here yet?)"
+fi
