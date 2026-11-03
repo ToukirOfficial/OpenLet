@@ -143,7 +143,7 @@ if [ -z "$ok" ]; then
   exit 1
 fi
 # Keep the live release and the one before it.
-cd releases && ls -1t | grep -vxF "$RELEASE" | grep -vxF "$(basename "${PREV:-none}")" | xargs -r rm -rf
+cd releases && { ls -1t | grep -vxF "$RELEASE" | grep -vxF "$(basename "${PREV:-none}")" || true; } | xargs -r rm -rf
 REMOTE
 
 echo "==> Checking $SITE_URL"
